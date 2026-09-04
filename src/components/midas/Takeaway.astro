@@ -1,0 +1,24 @@
+---
+interface Props {
+  label?: string;
+}
+
+const { label = 'Что забрать в работу' } = Astro.props;
+---
+
+<aside class="takeaway">
+  <p class="tk-h">{label}</p>
+  <div class="tk-b">
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .takeaway { margin: 48px 0; padding: 16px 24px 24px; border: 1px solid var(--line-strong); background: var(--paper-deep); }
+  .tk-h { margin: 0 0 8px; color: var(--muted); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .tk-h::before { content: '↳ '; color: var(--ink); }
+  .tk-b { font-size: 15.5px; line-height: 1.62; }
+  .tk-b :global(p) { margin: 0 0 12px; }
+  .tk-b :global(p:last-child) { margin-bottom: 0; }
+  .tk-b :global(strong) { font-weight: 650; }
+</style>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f6f6f4"/>
+  <path d="M330 0v630" stroke="#c9c9c5"/>
+  <g fill="#181818" font-family="Arial, Helvetica, sans-serif">
+    <text x="54" y="78" font-size="30" font-weight="700">sergey samozhen</text>
+    <text x="54" y="112" font-size="18" fill="#6e6e6c">ai engineer / researcher</text>
+    <text x="390" y="245" font-size="64">Building systems</text>
+    <text x="390" y="320" font-size="64">that make models</text>
+    <text x="390" y="395" font-size="64">prove their work.</text>
+  </g>
+</svg>

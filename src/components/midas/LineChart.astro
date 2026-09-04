@@ -1,0 +1,88 @@
+---
+import Figure from './Figure.astro';
+import type { Tick } from '../../data/midas-charts';
+
+export interface LineSeries {
+  name: string;
+  tone?: 'ink' | 'muted';
+  values: number[];
+  /** Per-point <title> tooltips. */
+  titles?: string[];
+}
+
+interface Props {
+  title?: string;
+  note?: string;
+  series: LineSeries[];
+  xLabels: string[];
+  yTicks: Tick[];
+  yDomain: [number, number];
+  xLabel?: string;
+  yLabel?: string;
+}
+
+const { title, note, series, xLabels, yTicks, yDomain, xLabel, yLabel } = Astro.props;
+
+const W = 680;
+const H = 310;
+const T = 26;
+const B = 48;
+const L = 56;
+const endLabelW = Math.max(...series.map((s) => s.name.length)) * 6.7 + 22;
+const R = endLabelW;
+const plotW = W - L - R;
+const plotH = H - T - B;
+
+const n = xLabels.length;
+const X = (i: number) => L + (n > 1 ? (i / (n - 1)) * plotW : plotW / 2);
+const Y = (v: number) => T + (1 - (v - yDomain[0]) / (yDomain[1] - yDomain[0])) * plotH;
+
+const lines = series.map((s) => {
+  const pts = s.values.map((v, i) => ({ x: X(i), y: Y(v) }));
+  return {
+    ...s,
+    pts,
+    path: pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' '),
+  };
+});
+---
+
+<Figure {title} {note}>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+    {yTicks.map((t) => (
+      <g>
+        <line x1={L} y1={Y(t.value)} x2={L + plotW} y2={Y(t.value)} class="grid" />
+        <text x={L - 10} y={Y(t.value) + 3.5} class="ax" text-anchor="end">{t.label}</text>
+      </g>
+    ))}
+    {xLabels.map((label, i) => (
+      <text x={X(i)} y={H - B + 20} class="ax" text-anchor="middle">{label}</text>
+    ))}
+    {lines.map((line) => (
+      <g>
+        <path d={line.path} class={`line ${line.tone ?? 'ink'}`} />
+        {line.pts.map((p, i) => (
+          <circle cx={p.x} cy={p.y} r="4.5" class={`dot ${line.tone ?? 'ink'}`}>
+            <title>{line.titles?.[i] ?? `${line.name}: ${line.values[i]}`}</title>
+          </circle>
+        ))}
+        <text x={line.pts[n - 1].x + 14} y={line.pts[n - 1].y + 3.5} class={`end ${line.tone ?? 'ink'}`}>{line.name}</text>
+      </g>
+    ))}
+    {yLabel && <text x="2" y="13" class="ax">{yLabel}</text>}
+    {xLabel && <text x={L + plotW} y={H - 6} class="ax" text-anchor="end">{xLabel}</text>}
+  </svg>
+</Figure>
+
+<style>
+  text { font-family: var(--mono); }
+  .ax { fill: var(--muted); font-size: 10.5px; }
+  .grid { stroke: var(--line); }
+  .line.ink { fill: none; stroke: var(--fill); stroke-width: 2; stroke-linejoin: round; }
+  .line.muted { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; }
+  .dot.ink { fill: var(--fill); }
+  .dot.muted { fill: var(--muted); }
+  .end { font-size: 11px; }
+  .end.ink { fill: var(--ink); }
+  .end.muted { fill: var(--muted); }
+</style>

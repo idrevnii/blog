@@ -1,0 +1,10 @@
+---
+import ArticlePage from '../../../components/ArticlePage.astro';
+import { getArticlePaths } from '../../../lib/posts';
+
+export const getStaticPaths = () => getArticlePaths('ru');
+
+const { post, alternatePath } = Astro.props;
+---
+
+<ArticlePage {post} {alternatePath} />

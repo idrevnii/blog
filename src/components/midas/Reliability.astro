@@ -1,0 +1,77 @@
+---
+import Figure from './Figure.astro';
+import type { ReliabilityBucket, Tick } from '../../data/midas-charts';
+
+interface Props {
+  title?: string;
+  note?: string;
+  buckets: ReliabilityBucket[];
+  /** Axis captions and the hover tooltip; default to the Russian post's wording. */
+  xLabel?: string;
+  yLabel?: string;
+  tip?: (claimed: number, actual: number, n: number) => string;
+}
+
+const {
+  title, note, buckets,
+  xLabel = 'заявленная вероятность',
+  yLabel = 'сбылась',
+  tip = (claimed: number, actual: number, n: number) => `заявлено ${claimed}% · сбылось ${actual}% · ${n} прогнозов`,
+} = Astro.props;
+
+const W = 560;
+const H = 400;
+const L = 46;
+const R = 16;
+const T = 26;
+const B = 52;
+const plotW = W - L - R;
+const plotH = H - T - B;
+
+const ticks: Tick[] = [0, 25, 50, 75, 100].map((v) => ({ value: v, label: `${v}%` }));
+const X = (v: number) => L + (v / 100) * plotW;
+const Y = (v: number) => T + (1 - v / 100) * plotH;
+
+const pts = buckets.map((b) => ({
+  ...b,
+  x: X(b.claimed),
+  y: Y(b.actual),
+  r: Math.max(4.4, Math.sqrt(b.n) * 0.95),
+}));
+const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+---
+
+<Figure {title} {note}>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+    {ticks.map((t) => (
+      <g>
+        <line x1={X(t.value)} y1={T} x2={X(t.value)} y2={T + plotH} class="grid" />
+        <text x={X(t.value)} y={H - B + 18} class="ax" text-anchor="middle">{t.label}</text>
+        <line x1={L} y1={Y(t.value)} x2={L + plotW} y2={Y(t.value)} class="grid" />
+        <text x={L - 8} y={Y(t.value) + 3.5} class="ax" text-anchor="end">{t.label}</text>
+      </g>
+    ))}
+    {/* Perfect calibration is actual = claimed, so the guide runs (0,0) to (100,100). */}
+    <line x1={X(0)} y1={Y(0)} x2={X(100)} y2={Y(100)} class="ideal" />
+    <path d={path} class="curve" />
+    {pts.map((p) => (
+      <g>
+        <circle cx={p.x} cy={p.y} r={p.r} class="dot">
+          <title>{tip(p.claimed, p.actual, p.n)}</title>
+        </circle>
+        <text x={p.x + p.r + 6} y={p.y + 3.5} class="ax">{p.actual}%</text>
+      </g>
+    ))}
+    <text x={L + plotW} y={H - 10} class="ax" text-anchor="end">{xLabel}</text>
+    <text x="2" y="13" class="ax">{yLabel}</text>
+  </svg>
+</Figure>
+
+<style>
+  text { font-family: var(--mono); }
+  .ax { fill: var(--muted); font-size: 10.5px; }
+  .grid { stroke: var(--line); }
+  .ideal { stroke: var(--line-strong); stroke-dasharray: 4 4; }
+  .curve { fill: none; stroke: var(--fill); stroke-width: 2; stroke-linejoin: round; }
+  .dot { fill: var(--fill); fill-opacity: 0.85; }
+</style>

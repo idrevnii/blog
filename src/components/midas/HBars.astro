@@ -1,0 +1,90 @@
+---
+import Figure from './Figure.astro';
+import type { HBarRow } from '../../data/midas-charts';
+
+interface Props {
+  title?: string;
+  note?: string;
+  rows: HBarRow[];
+  /** Explicit value domain; defaults to [min(0, values…), max(0, values…)]. */
+  domain?: [number, number];
+  /** Dashed vertical reference line, in data units. */
+  rule?: { at: number; label?: string };
+}
+
+const { title, note, rows, domain, rule } = Astro.props;
+
+const W = 720;
+const ROW = 34;
+const BAR = 24;
+const TOP = 2;
+const charW = 6.7;
+const labelCharW = 6.9;
+
+const maxLabelLen = Math.max(...rows.map((r) => r.label.length));
+const labelW = Math.min(250, Math.max(80, maxLabelLen * labelCharW + 6));
+
+const textW = (r: HBarRow) => r.display.length * charW + (r.sub ? r.sub.length * 6 + 8 : 0);
+const pos = rows.filter((r) => r.value >= 0);
+const neg = rows.filter((r) => r.value < 0);
+const posTextW = pos.length ? Math.max(...pos.map(textW)) + 10 : 12;
+const negTextW = neg.length ? Math.max(...neg.map(textW)) + 10 : 0;
+
+const x0 = labelW + 14 + negTextW;
+const plotW = W - x0 - 10 - posTextW;
+
+const values = rows.map((r) => r.value);
+const lo = Math.min(0, ...values, rule ? rule.at : 0, ...(domain ?? []));
+const hi = Math.max(0, ...values, rule ? rule.at : 0, ...(domain ?? []));
+const scale = plotW / (hi - lo || 1);
+const originX = x0 + (0 - lo) * scale;
+const H = rows.length * ROW + 10 + (rule?.label ? 22 : 0);
+
+const bars = rows.map((row, i) => {
+  const y = TOP + i * ROW;
+  const len = Math.max(Math.abs(row.value) * scale, 1.5);
+  const barX = row.value >= 0 ? originX : originX - len;
+  return {
+    ...row,
+    y,
+    cy: y + BAR / 2,
+    barX,
+    len,
+    right: row.value >= 0,
+    tx: row.value >= 0 ? barX + len + 8 : barX - 8,
+  };
+});
+const ruleX = rule ? x0 + (rule.at - lo) * scale : null;
+---
+
+<Figure {title} {note}>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+    {bars.map((b) => (
+      <g>
+        <text x={labelW} y={b.cy + 3.8} class="lbl" text-anchor="end">{b.label}</text>
+        <rect x={b.barX} y={b.y} width={b.len} height={BAR} class={`bar ${b.variant ?? 'solid'}`}>
+          <title>{`${b.label}: ${b.display}`}</title>
+        </rect>
+        <text x={b.tx} y={b.cy + 3.8} class="val" text-anchor={b.right ? 'start' : 'end'}>
+          {b.display}{b.sub && <tspan class="sub" dx="8">{b.sub}</tspan>}
+        </text>
+      </g>
+    ))}
+    {/* Drawn after the bars: at rule.at === 0 it coincides with the bar origin, so
+        behind them it was fully occluded and left its label dangling on its own. */}
+    {ruleX !== null && <line x1={ruleX} y1="0" x2={ruleX} y2={rows.length * ROW + 4} class="rule" />}
+    {rule?.label && ruleX !== null && <text x={ruleX} y={H - 6} class="ax" text-anchor="middle">{rule.label}</text>}
+  </svg>
+</Figure>
+
+<style>
+  text { font-family: var(--mono); }
+  .lbl { fill: var(--muted); font-size: 11px; }
+  .val { fill: var(--ink); font-size: 11px; }
+  .sub { fill: var(--muted); font-size: 10px; }
+  .ax { fill: var(--muted); font-size: 10px; }
+  .rule { stroke: var(--fill-soft); stroke-dasharray: 4 4; }
+  .bar.solid { fill: var(--fill); }
+  .bar.outline { fill: var(--paper); stroke: var(--fill); stroke-width: 1.4; }
+  .bar.faint { fill: var(--fill-soft); }
+</style>

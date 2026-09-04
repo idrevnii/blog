@@ -1,0 +1,152 @@
+---
+import { Icon } from 'astro-icon/components';
+import { site, withBase } from '../lib/site';
+import type { Language } from '../lib/posts';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  section?: 'index' | 'articles' | 'about';
+  lang?: Language;
+  alternatePath?: string;
+}
+
+const { title, description = site.description, section, lang = 'en', alternatePath } = Astro.props;
+const isRu = lang === 'ru';
+const prefix = isRu ? 'ru/' : '';
+const personName = isRu ? site.nameRu : site.name;
+const pageTitle = title
+  ? `${title} - ${personName}`
+  : isRu
+    ? `${site.nameRu} - AI-инженер и исследователь`
+    : `${site.name} - AI engineer & researcher`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const alternate = alternatePath !== undefined ? new URL(withBase(alternatePath), Astro.site) : undefined;
+// Language switch: translated page if it exists, otherwise the other language's home.
+const switchHref = withBase(alternatePath ?? (isRu ? '' : 'ru/'));
+const nav = isRu
+  ? [
+      { id: 'index', label: 'главная', href: prefix },
+      { id: 'articles', label: 'статьи', href: `${prefix}articles/` },
+      { id: 'about', label: 'обо мне / контакты', href: `${prefix}about/` },
+    ]
+  : [
+      { id: 'index', label: 'index', href: '' },
+      { id: 'articles', label: 'articles', href: 'articles/' },
+      { id: 'about', label: 'about / contact', href: 'about/' },
+    ];
+
+const themeLabels = isRu
+  ? { auto: 'Тема: как в системе', light: 'Тема: светлая', dark: 'Тема: тёмная' }
+  : { auto: 'Theme: match system', light: 'Theme: light', dark: 'Theme: dark' };
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131313" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
+    <link rel="canonical" href={canonical} />
+    {alternate && <link rel="alternate" hreflang={isRu ? 'en' : 'ru'} href={alternate} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={isRu ? 'ru_RU' : 'en_US'} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(withBase('og.png'), Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>{pageTitle}</title>
+    <script is:inline>
+      try {
+        const stored = localStorage.getItem('theme');
+        if (stored) document.documentElement.dataset.theme = stored;
+      } catch {}
+      document.documentElement.dataset.js = '';
+    </script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="sidebar-inner">
+          <a class="identity" href={withBase(prefix)} aria-label={isRu ? 'Главная' : 'Home'}>
+            <span class="identity-name">{personName}</span>
+            <span class="identity-role">{isRu ? site.roleRu : site.role}</span>
+          </a>
+
+          <button class="mobile-menu" type="button" aria-expanded="false" aria-controls="site-nav" data-open-label={isRu ? 'меню +' : 'menu +'} data-close-label={isRu ? 'меню −' : 'menu −'}>{isRu ? 'меню +' : 'menu +'}</button>
+
+          <nav class="nav" id="site-nav" aria-label={isRu ? 'Основная навигация' : 'Primary navigation'}>
+            {nav.map((item) => (
+              <a href={withBase(item.href)} aria-current={section === item.id ? 'page' : undefined}>{item.label}</a>
+            ))}
+          </nav>
+
+          <div class="sidebar-foot">
+            <div class="language-switch" role="group" aria-label={isRu ? 'Выбор языка' : 'Language selector'}>
+              {isRu ? <a href={switchHref} lang="en">EN</a> : <span aria-current="true">EN</span>}
+              <span aria-hidden="true">/</span>
+              {isRu ? <span aria-current="true">RU</span> : <a href={switchHref} lang="ru">RU</a>}
+            </div>
+
+            <button
+              class="theme-toggle"
+              type="button"
+              aria-label={themeLabels.auto}
+              data-label-auto={themeLabels.auto}
+              data-label-light={themeLabels.light}
+              data-label-dark={themeLabels.dark}
+            >
+              <Icon name="ph:circle-half" data-mode="auto" />
+              <Icon name="ph:sun" data-mode="light" />
+              <Icon name="ph:moon" data-mode="dark" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <slot />
+      </main>
+    </div>
+
+    <script>
+      const button = document.querySelector<HTMLButtonElement>('.mobile-menu');
+      const nav = document.querySelector<HTMLElement>('#site-nav');
+      button?.addEventListener('click', () => {
+        const open = button.getAttribute('aria-expanded') === 'true';
+        button.setAttribute('aria-expanded', String(!open));
+        button.textContent = open ? button.dataset.openLabel ?? 'menu +' : button.dataset.closeLabel ?? 'menu −';
+        nav?.classList.toggle('is-open', !open);
+      });
+
+      const html = document.documentElement;
+      const themeButton = document.querySelector<HTMLButtonElement>('.theme-toggle');
+      const modes = ['auto', 'light', 'dark'] as const;
+      const syncLabel = () => {
+        const mode = html.dataset.theme ?? 'auto';
+        const label = themeButton?.dataset[`label${mode[0].toUpperCase()}${mode.slice(1)}`];
+        if (label) themeButton?.setAttribute('aria-label', label);
+      };
+      syncLabel();
+      themeButton?.addEventListener('click', () => {
+        const next = modes[(modes.indexOf((html.dataset.theme ?? 'auto') as typeof modes[number]) + 1) % modes.length];
+        if (next === 'auto') {
+          delete html.dataset.theme;
+          localStorage.removeItem('theme');
+        } else {
+          html.dataset.theme = next;
+          localStorage.setItem('theme', next);
+        }
+        syncLabel();
+      });
+    </script>
+  </body>
+</html>

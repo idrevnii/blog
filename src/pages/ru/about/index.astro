@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { site } from '../../../lib/site';
+
+const links = [
+  { href: `mailto:${site.email}`, label: site.email },
+  { href: site.github, label: 'github.com/idrevnii' },
+  { href: site.telegram, label: 't.me/drevnii_dev' },
+];
+---
+
+<BaseLayout
+  title="Обо мне"
+  description={`Связаться с ${site.nameRu}.`}
+  section="about"
+  lang="ru"
+  alternatePath="about/"
+>
+  <section class="contact-page">
+    <h1>Написать мне</h1>
+    <div class="contact-links">
+      {links.map((link) => (
+        <a href={link.href} target={link.href.startsWith('mailto:') ? undefined : '_blank'} rel={link.href.startsWith('mailto:') ? undefined : 'noreferrer'}>
+          <span>{link.label}</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .contact-page { display: flex; min-height: 100dvh; padding: clamp(48px, 7vw, 128px) var(--pad) 96px; flex-direction: column; }
+  h1 { max-width: 1000px; margin: 0; font-size: clamp(64px, 8vw, 140px); font-weight: 420; letter-spacing: -.07em; line-height: .9; }
+  .contact-links { width: min(900px, 100%); margin-top: auto; padding-top: 96px; }
+  .contact-links a { display: flex; width: 100%; padding: 16px 0; border-bottom: 1px solid var(--line); align-items: center; justify-content: space-between; gap: 24px; font-size: clamp(20px, 2.2vw, 36px); letter-spacing: -.03em; text-decoration: none; }
+  .contact-links a:first-child { border-top: 1px solid var(--line); }
+  .contact-links a span:last-child { transition: transform .2s ease; }
+  .contact-links a:hover span:last-child { transform: translate(3px, -3px); }
+  @media (max-width: 760px) {
+    .contact-page { min-height: calc(100dvh - 84px); padding: 48px 16px 48px; }
+    .contact-links a { font-size: 18px; }
+  }
+</style>

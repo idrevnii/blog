@@ -1,0 +1,102 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatDate, withBase } from '../lib/site';
+import { getReadingTime, postLang, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  alternatePath?: string;
+}
+
+const { post, alternatePath } = Astro.props;
+const { Content, headings } = await render(post);
+const isRu = postLang(post) === 'ru';
+const toc = headings.filter(({ depth }) => depth === 2);
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  section="articles"
+  lang={postLang(post)}
+  {alternatePath}
+>
+  <div class:list={['article-shell', { 'without-toc': toc.length === 0 }]}>
+    <article>
+      <header class="article-header">
+        <div class="article-meta meta">
+          <time datetime={post.data.publishedAt.toISOString()}>{formatDate(post.data.publishedAt)}</time>
+          <span>{getReadingTime(post.body)} {isRu ? 'мин чтения' : 'min read'}</span>
+        </div>
+        <h1 class="display-title">{post.data.title}</h1>
+        <p class="lede">{post.data.description}</p>
+      </header>
+
+      <div class="prose">
+        <Content />
+      </div>
+    </article>
+
+    {toc.length > 0 && (
+      <aside class="toc" aria-label={isRu ? 'Содержание' : 'Table of contents'}>
+        <p class="meta">{isRu ? 'содержание' : 'contents'}</p>
+        <nav>
+          {toc.map((heading) => <a href={`#${heading.slug}`}>{heading.text}</a>)}
+        </nav>
+        <a class="back-link" href={withBase(`${isRu ? 'ru/' : ''}articles/`)}>
+          {isRu ? 'назад к статьям' : 'back to articles'}
+        </a>
+      </aside>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .article-shell { display: grid; padding: clamp(32px, 4vw, 64px) var(--pad) 96px; grid-template-columns: minmax(0, 880px) minmax(200px, 280px); gap: clamp(48px, 6vw, 96px); }
+  .article-shell.without-toc { display: block; max-width: 1000px; }
+  .article-header { padding-bottom: 48px; border-bottom: 1px solid var(--line); }
+  :global(.article-header:has(+ .prose > .tiles:first-child)) { padding-bottom: 0; border-bottom: 0; }
+  .article-header .display-title { margin-bottom: 32px; white-space: pre-line; }
+  .article-meta { display: flex; align-items: center; gap: 12px; }
+  .article-meta span::before { margin-right: 12px; content: '·'; }
+  .toc { position: sticky; top: 64px; height: fit-content; }
+  .toc nav { display: flex; margin: 24px 0 32px; flex-direction: column; }
+  .toc nav a { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; text-decoration: none; }
+  .toc nav a:hover { color: var(--ink); }
+  .back-link { color: var(--muted); font-size: 12px; }
+  .prose { max-width: 780px; font-size: 17px; line-height: 1.66; }
+  .prose :global(h2) { margin: 64px 0 24px; scroll-margin-top: 32px; font-size: clamp(29px, 2.3vw, 40px); font-weight: 480; letter-spacing: -.035em; line-height: 1.1; }
+  .prose :global(h3) { margin: 48px 0 16px; scroll-margin-top: 32px; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+  .prose :global(p) { margin: 0 0 24px; }
+  .prose :global(strong) { font-weight: 650; }
+  .prose :global(blockquote) { margin: 32px 0; padding: 4px 0 4px 24px; border-left: 3px solid var(--ink); font-size: 20px; letter-spacing: -.015em; line-height: 1.45; }
+  .prose :global(blockquote p) { margin: 0; }
+  .prose :global(ul), .prose :global(ol) { margin: 16px 0 24px; padding-left: 24px; }
+  .prose :global(li) { margin-bottom: 8px; padding-left: 4px; }
+  .prose :global(code) { padding: 2px 4px; border: 1px solid var(--line); background: var(--paper-deep); font-family: var(--mono); font-size: .82em; }
+  /* background-color must be reset: the UA default is `Mark` (yellow), which otherwise
+     sits under the gradient and turns unreadable against light text in dark mode. */
+  .prose :global(mark) { padding: 0 2px; background-color: transparent; background-image: linear-gradient(transparent 62%, light-dark(rgba(24, 24, 24, 0.16), rgba(232, 232, 229, 0.22)) 62%); color: inherit; }
+  .prose :global(hr) { margin: 48px 0; border: 0; border-top: 1px solid var(--line-strong); }
+  .prose :global(.note) { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+  .prose :global(pre) { margin: 32px 0; padding: 16px 24px; overflow-x: auto; border: 1px solid var(--line); background: var(--paper-deep); font-size: 13.5px; line-height: 1.55; }
+  .prose :global(pre code) { padding: 0; border: 0; background: none; font-size: inherit; }
+  .prose :global(table) { width: 100%; margin: 32px 0 48px; border-collapse: collapse; font-family: var(--mono); font-size: 13px; line-height: 1.45; }
+  .prose :global(th) { color: var(--muted); font-size: 11px; font-weight: 500; text-align: left; text-transform: uppercase; }
+  .prose :global(th), .prose :global(td) { padding: 12px 8px; border-bottom: 1px solid var(--line); }
+  .prose :global(th:first-child), .prose :global(td:first-child) { padding-left: 0; }
+  /* Shiki emits both palettes; light-dark() follows color-scheme, so the toggle drives it. */
+  .prose :global(.astro-code),
+  .prose :global(.astro-code span) {
+    color: light-dark(var(--shiki-light), var(--shiki-dark));
+  }
+  @media (max-width: 1100px) { .article-shell { display: block; } .toc { display: none; } }
+  @media (max-width: 760px) {
+    .article-shell { padding: 32px 16px 64px; }
+    .article-header { padding-bottom: 32px; }
+    .prose { font-size: 16px; }
+    .prose :global(h2) { margin-top: 64px; }
+    .prose :global(table) { display: block; overflow-x: auto; white-space: nowrap; }
+  }
+</style>

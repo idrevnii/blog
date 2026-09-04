@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatDate } from '../../lib/site';
+import { getPosts, getPostUrl } from '../../lib/posts';
+
+const posts = await getPosts('en');
+---
+
+<BaseLayout
+  title="Articles"
+  description="Articles about LLM systems, agents and evaluation."
+  section="articles"
+  alternatePath="ru/articles/"
+>
+  <section class="listing-page">
+    <h1>Articles</h1>
+
+    <div class="paper-list">
+      {posts.map((post) => (
+        <a class="paper" href={getPostUrl(post)}>
+          <time class="meta" datetime={post.data.publishedAt.toISOString()}>{formatDate(post.data.publishedAt)}</time>
+          <div>
+            <h2>{post.data.title}</h2>
+            <p>{post.data.description}</p>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .listing-page { max-width: 1100px; padding: clamp(32px, 5vw, 96px) var(--pad) 96px; }
+  h1 { margin: 0 0 64px; font-size: clamp(48px, 5vw, 82px); font-weight: 430; letter-spacing: -.055em; line-height: .98; }
+  .paper-list { border-top: 1px solid var(--line-strong); }
+  .paper { display: grid; padding: 32px 0; border-bottom: 1px solid var(--line); grid-template-columns: 130px minmax(0, 1fr); gap: 24px; text-decoration: none; }
+  .paper:hover h2 { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .12em; }
+  .paper h2 { max-width: 750px; margin: -4px 0 12px; font-size: clamp(27px, 2.8vw, 43px); font-weight: 470; letter-spacing: -.04em; line-height: 1.08; }
+  .paper p { max-width: 720px; margin: 0; color: var(--muted); font-size: 14px; }
+  @media (max-width: 760px) {
+    .listing-page { padding: 32px 16px 64px; }
+    h1 { margin-bottom: 48px; }
+    .paper { grid-template-columns: 1fr; gap: 12px; }
+    .paper h2 { margin-top: 0; }
+  }
+</style>

@@ -1,0 +1,49 @@
+---
+interface Stat {
+  value: string;
+  label: string;
+  note?: string;
+}
+
+interface Props {
+  items: Stat[];
+  cols?: number;
+}
+
+const { items, cols = 3 } = Astro.props;
+---
+
+<dl class="tiles" style={`--cols: ${cols}`}>
+  {items.map((item, i) => (
+    <div data-lead={i % cols === 0 ? '' : undefined}>
+      <dt>{item.value}</dt>
+      <dd>{item.label}</dd>
+      {item.note && <dd class="s">{item.note}</dd>}
+    </div>
+  ))}
+</dl>
+
+<style>
+  .tiles {
+    display: grid;
+    margin: 48px 0 32px;
+    border-block: 1px solid var(--line-strong);
+    grid-template-columns: repeat(var(--cols), 1fr);
+    gap: 1px;
+    background: var(--line);
+  }
+  :global(.prose) > .tiles:first-child { margin-top: 0; }
+  /* Cells are separated by a 1px grid gap, so every cell needs inline padding or its
+     text sits on the rule. Only the first cell of each row stays flush with the prose. */
+  .tiles > div { display: flex; padding: 24px 16px 16px; background: var(--paper); flex-direction: column; align-items: flex-start; }
+  .tiles > div[data-lead] { padding-left: 0; }
+  dt { font-family: var(--mono); font-size: clamp(22px, 2vw, 32px); font-weight: 500; letter-spacing: -0.02em; }
+  dd { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  dd.s { margin-top: 2px; color: var(--muted); font-size: 11px; opacity: .78; }
+  @media (max-width: 640px) {
+    /* Two columns regardless of --cols, so the desktop lead flags no longer line up. */
+    .tiles { margin: 32px 0 24px; grid-template-columns: repeat(2, 1fr); }
+    .tiles > div { padding-left: 16px; }
+    .tiles > div:nth-child(odd) { padding-left: 0; }
+  }
+</style>

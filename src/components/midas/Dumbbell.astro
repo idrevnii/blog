@@ -1,0 +1,73 @@
+---
+import Figure from './Figure.astro';
+import type { DumbbellRow } from '../../data/midas-charts';
+
+interface Props {
+  title?: string;
+  note?: string;
+  rows: DumbbellRow[];
+  /** Labels for the two dots. */
+  aLabel?: string;
+  bLabel?: string;
+}
+
+const { title, note, rows, aLabel = 'fixed', bLabel = 'agent' } = Astro.props;
+
+const W = 720;
+const ROW = 34;
+const TOP = 4;
+const LEGEND_H = 34;
+const R = 5.5;
+
+const maxLabelLen = Math.max(...rows.map((r) => r.label.length));
+const labelW = Math.min(250, Math.max(80, maxLabelLen * 6.9 + 6));
+const x0 = labelW + 14;
+const deltaW = Math.max(...rows.map((r) => r.delta.length)) * 6.7 + 22;
+const plotW = W - x0 - deltaW;
+
+const all = rows.flatMap((r) => [r.fixed, r.agent]);
+const pad = (Math.max(...all) - Math.min(...all)) * 0.04 || 0.01;
+const lo = Math.min(...all) - pad;
+const hi = Math.max(...all) + pad;
+const scale = plotW / (hi - lo);
+const X = (v: number) => x0 + (v - lo) * scale;
+const H = rows.length * ROW + 10 + LEGEND_H;
+
+const dots = rows.map((row, i) => {
+  const cy = TOP + i * ROW + 12;
+  const ax = X(row.fixed);
+  const bx = X(row.agent);
+  return { ...row, cy, ax, bx };
+});
+const legendY = rows.length * ROW + 24;
+---
+
+<Figure {title} {note}>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+    {dots.map((d) => (
+      <g>
+        <text x={labelW} y={d.cy + 3.8} class="lbl" text-anchor="end">{d.label}</text>
+        <line x1={d.ax} y1={d.cy} x2={d.bx} y2={d.cy} class="conn" />
+        <circle cx={d.ax} cy={d.cy} r={R} class="dot-a"><title>{`${d.label} · ${aLabel}: ${d.fixed.toFixed(3).replace('.', ',')}`}</title></circle>
+        <circle cx={d.bx} cy={d.cy} r={R} class="dot-b"><title>{`${d.label} · ${bLabel}: ${d.agent.toFixed(3).replace('.', ',')}`}</title></circle>
+        <text x={W - 10} y={d.cy + 3.8} class="val" text-anchor="end">{d.delta}</text>
+      </g>
+    ))}
+    <g>
+      <circle cx={x0} cy={legendY} r={R} class="dot-a" />
+      <text x={x0 + 12} y={legendY + 3.8} class="ax">{aLabel}</text>
+      <circle cx={x0 + 150} cy={legendY} r={R} class="dot-b" />
+      <text x={x0 + 162} y={legendY + 3.8} class="ax">{bLabel}</text>
+    </g>
+  </svg>
+</Figure>
+
+<style>
+  text { font-family: var(--mono); }
+  .lbl { fill: var(--muted); font-size: 11px; }
+  .val { fill: var(--ink); font-size: 11px; }
+  .ax { fill: var(--muted); font-size: 10px; }
+  .conn { stroke: var(--line-strong); stroke-width: 2; }
+  .dot-a { fill: var(--paper); stroke: var(--fill); stroke-width: 2; }
+  .dot-b { fill: var(--fill); }
+</style>

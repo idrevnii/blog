@@ -1,0 +1,36 @@
+---
+interface Props {
+  title?: string;
+  note?: string;
+}
+
+const { title, note } = Astro.props;
+---
+
+<figure class="fig">
+  {title && <figcaption class="fig-t">{title}</figcaption>}
+  <div class="fig-body">
+    <slot />
+  </div>
+  {note && <p class="fig-n">{note}</p>}
+</figure>
+
+<style>
+  .fig { margin: 48px 0; }
+  .fig-t {
+    margin: 0 0 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .fig-body { overflow-x: auto; }
+  .fig-body :global(svg) { display: block; width: 100%; height: auto; min-width: 560px; }
+  .fig-n { margin: 16px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+  @media (max-width: 760px) {
+    .fig { margin: 32px 0 48px; }
+  }
+</style>

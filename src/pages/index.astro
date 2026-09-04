@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatDate } from '../lib/site';
+import { getPosts, getPostUrl, getReadingTime } from '../lib/posts';
+
+const post = (await getPosts('en'))[0];
+---
+
+<BaseLayout section="index" alternatePath="ru/" description="Articles about LLM systems, agents and evaluation.">
+  {post && (
+    <section class="feature">
+      <div class="article-meta meta">
+        <time datetime={post.data.publishedAt.toISOString()}>{formatDate(post.data.publishedAt)}</time>
+        <span>{getReadingTime(post.body)} min read</span>
+      </div>
+
+      <h1 class="display-title">
+        <a href={getPostUrl(post)}>{post.data.title}</a>
+      </h1>
+      <p class="lede">{post.data.description}</p>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  .feature {
+    min-height: 100dvh;
+    padding: clamp(32px, 4vw, 64px) var(--pad) 64px;
+  }
+  .display-title { max-width: 1180px; }
+  .display-title a { text-decoration: none; transition: opacity .2s ease; }
+  .display-title a:hover { opacity: .68; }
+  .lede { max-width: 1080px; }
+  .article-meta { display: flex; align-items: center; gap: 12px; }
+  .article-meta span::before { margin-right: 12px; content: '·'; }
+  @media (max-width: 760px) {
+    .feature { min-height: calc(100dvh - 84px); padding: 32px 16px 64px; }
+  }
+</style>
