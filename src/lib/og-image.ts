@@ -30,7 +30,7 @@ export async function renderArticleOg({ title, lang, publishedAt, hostname }: {
 }) {
   const isRu = lang === 'ru';
   const [author, role, headline, domain, date] = await Promise.all([
-    textBlock((isRu ? site.nameRu : site.name).toLowerCase(), 228, 80, 26, '#181818', 'bold'),
+    textBlock(isRu ? site.nameRu : site.name, 228, 80, 26, '#181818', 'bold'),
     textBlock(isRu ? site.roleRu : site.role, 228, 64, 18, '#6e6e6c'),
     textBlock(title.replace(/\s+/g, ' ').trim(), 746, 360, 64),
     textBlock(hostname, 228, 36, 22),
@@ -45,6 +45,24 @@ export async function renderArticleOg({ title, lang, publishedAt, hostname }: {
       { input: headline.data, left: 390, top: Math.round((630 - headline.info.height) / 2) },
       { input: domain.data, left: 54, top: 513 },
       { input: date.data, left: 54, top: 552 },
+    ])
+    .png()
+    .toBuffer();
+}
+
+export async function renderSiteOg() {
+  const [author, role, headline] = await Promise.all([
+    textBlock(site.name, 260, 80, 28, '#181818', 'bold'),
+    textBlock(site.role.toLowerCase(), 260, 64, 18, '#6e6e6c'),
+    textBlock('Building systems\nthat make models\nprove their work.', 756, 360, 64),
+  ]);
+  const divider = Buffer.from('<svg width="1" height="630"><rect width="1" height="630" fill="#c9c9c5"/></svg>');
+  return sharp({ create: { width: 1200, height: 630, channels: 3, background: '#f6f6f4' } })
+    .composite([
+      { input: divider, left: 330, top: 0 },
+      { input: author.data, left: 54, top: 58 },
+      { input: role.data, left: 54, top: 58 + author.info.height + 18 },
+      { input: headline.data, left: 390, top: Math.round((630 - headline.info.height) / 2) },
     ])
     .png()
     .toBuffer();

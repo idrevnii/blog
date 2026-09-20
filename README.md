@@ -45,6 +45,6 @@ The build generates canonical and language links, structured data, `robots.txt`,
 
 ## Article sharing previews
 
-Every published article gets a PNG preview at `/og/en/<slug>.png` or `/og/ru/<slug>.png`, generated during `astro build`. The article's Open Graph and Twitter metadata point to this image. The title, author, publication date, and domain are rendered into the existing light layout; long titles wrap and shrink to fit. No extra frontmatter or image upload is needed. Other pages keep `/og.png`.
+Every published article gets a PNG preview at `/og/en/<slug>.png` or `/og/ru/<slug>.png`, generated during `astro build`. The article's Open Graph and Twitter metadata point to this image. The title, author, publication date, and domain are rendered into the existing light layout; long titles wrap and shrink to fit. No extra frontmatter or image upload is needed. Other pages use `/og.png`, also generated during the build. All previews preserve the author's name capitalization from `src/lib/site.ts`.
 
 The renderer is `src/lib/og-image.ts`. It uses Sharp and the bundled Inter TTF from [Google Fonts](https://github.com/google/fonts/tree/main/ofl/inter), under the adjacent Inter SIL Open Font License. Rendering works offline during builds and needs no image service or server on GitHub Pages.
