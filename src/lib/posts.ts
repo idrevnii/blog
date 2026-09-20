@@ -17,6 +17,9 @@ export const getPosts = async (lang: Language) =>
 export const getPostUrl = (post: Post) =>
   withBase(`${postLang(post) === 'ru' ? 'ru/' : ''}articles/${postSlug(post)}/`);
 
+export const getPostOgUrl = (post: Post) =>
+  withBase(`og/${postLang(post)}/${postSlug(post)}.png`);
+
 /** Static paths for one language, with a link to the translated version if it exists. */
 export const getArticlePaths = async (lang: Language) => {
   const other = lang === 'en' ? 'ru' : 'en';
@@ -36,5 +39,4 @@ export const getArticlePaths = async (lang: Language) => {
   });
 };
 
-export const getReadingTime = (body = '') =>
-  Math.max(1, Math.ceil(body.trim().split(/\s+/u).filter(Boolean).length / 200));
+export { getReadingTime } from './reading-time';

@@ -1,18 +1,35 @@
 ---
+import { withBase } from '../../lib/site';
 interface Props {
   title?: string;
   note?: string;
+  source?: string;
+  showSource?: boolean;
+  headers?: string[];
+  rows?: (string | number)[][];
 }
 
-const { title, note } = Astro.props;
+const { title, note, source = '/research/midas/verified.json', headers, rows, showSource = true } = Astro.props;
+const isRu = Astro.url.pathname.includes('/ru/');
 ---
 
 <figure class="fig">
   {title && <figcaption class="fig-t">{title}</figcaption>}
-  <div class="fig-body">
+  <div class="fig-body" tabindex="0" role="region" aria-label={title}>
     <slot />
   </div>
   {note && <p class="fig-n">{note}</p>}
+  {headers && rows && <details class="fig-data">
+    <summary>{isRu ? 'Числа в таблице' : 'View numbers'}</summary>
+    <div class="fig-table" tabindex="0" role="region" aria-label={title}><table>
+      <caption>{title}</caption>
+      <thead><tr>{headers.map(h => <th scope="col">{h}</th>)}</tr></thead>
+      <tbody>{rows.map(row => <tr>{row.map((cell, i) => i === 0 ? <th scope="row">{cell}</th> : <td>{cell}</td>)}</tr>)}</tbody>
+    </table></div>
+  </details>}
+  {showSource && <a class="fig-source" href={withBase(source)}>
+    {isRu ? 'Данные графика' : 'Chart data'}
+  </a>}
 </figure>
 
 <style>
@@ -21,15 +38,24 @@ const { title, note } = Astro.props;
     margin: 0 0 16px;
     padding-top: 12px;
     border-top: 1px solid var(--line-strong);
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
+    color: var(--ink);
+    font-size: 19px;
+    font-weight: 650;
+    line-height: 1.35;
+    text-wrap: balance;
+    text-transform: none;
+    letter-spacing: normal;
   }
   .fig-body { overflow-x: auto; }
-  .fig-body :global(svg) { display: block; width: 100%; height: auto; min-width: 560px; }
+  .fig-body :global(svg) { display: block; width: 100%; height: auto; min-width: 640px; }
   .fig-n { margin: 16px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+  .fig-source { display: inline-block; margin-top: 8px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  .fig-data { margin-top: 12px; color: var(--muted); font-size: 12px; }
+  .fig-data summary { cursor: pointer; }
+  .fig-table { overflow-x: auto; }
+  .fig-data table { width: 100%; margin-top: 12px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .fig-data caption { text-align: left; margin-bottom: 8px; }
+  .fig-data th, .fig-data td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); text-align: left; text-transform: none; letter-spacing: normal; font-weight: 400; }
   @media (max-width: 760px) {
     .fig { margin: 32px 0 48px; }
   }

@@ -6,13 +6,16 @@ interface Props {
   title?: string;
   note?: string;
   rows: HBarRow[];
+  showTable?: boolean;
+  showSource?: boolean;
   /** Explicit value domain; defaults to [min(0, values…), max(0, values…)]. */
   domain?: [number, number];
   /** Dashed vertical reference line, in data units. */
   rule?: { at: number; label?: string };
 }
 
-const { title, note, rows, domain, rule } = Astro.props;
+const { title, note, rows, domain, rule, showTable = true, showSource = true } = Astro.props;
+const isRu = Astro.url.pathname.includes('/ru/');
 
 const W = 720;
 const ROW = 34;
@@ -42,7 +45,7 @@ const H = rows.length * ROW + 10 + (rule?.label ? 22 : 0);
 
 const bars = rows.map((row, i) => {
   const y = TOP + i * ROW;
-  const len = Math.max(Math.abs(row.value) * scale, 1.5);
+  const len = Math.abs(row.value) * scale;
   const barX = row.value >= 0 ? originX : originX - len;
   return {
     ...row,
@@ -57,8 +60,8 @@ const bars = rows.map((row, i) => {
 const ruleX = rule ? x0 + (rule.at - lo) * scale : null;
 ---
 
-<Figure {title} {note}>
-  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+<Figure {title} {note} {showSource} headers={isRu ? ['Вариант', 'Значение'] : ['Entry', 'Value']} rows={showTable ? rows.map(r => [r.label, r.display]) : undefined}>
+  <svg data-chart="bars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
     {bars.map((b) => (
       <g>
         <text x={labelW} y={b.cy + 3.8} class="lbl" text-anchor="end">{b.label}</text>

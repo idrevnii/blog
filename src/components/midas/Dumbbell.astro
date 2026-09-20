@@ -5,18 +5,21 @@ import type { DumbbellRow } from '../../data/midas-charts';
 interface Props {
   title?: string;
   note?: string;
+  showSource?: boolean;
   rows: DumbbellRow[];
   /** Labels for the two dots. */
   aLabel?: string;
   bLabel?: string;
+  lang?: 'ru' | 'en';
 }
 
-const { title, note, rows, aLabel = 'fixed', bLabel = 'agent' } = Astro.props;
+const { title, note, rows, aLabel = 'fixed', bLabel = 'agent', lang = 'ru', showSource = true } = Astro.props;
+const number = new Intl.NumberFormat(lang, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
 const W = 720;
 const ROW = 34;
 const TOP = 4;
-const LEGEND_H = 34;
+const LEGEND_H = 64;
 const R = 5.5;
 
 const maxLabelLen = Math.max(...rows.map((r) => r.label.length));
@@ -39,25 +42,29 @@ const dots = rows.map((row, i) => {
   const bx = X(row.agent);
   return { ...row, cy, ax, bx };
 });
-const legendY = rows.length * ROW + 24;
+const legendY = rows.length * ROW + 52;
 ---
 
-<Figure {title} {note}>
-  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+<Figure {title} {note} {showSource} headers={[lang === 'ru' ? 'Модель' : 'Model', aLabel, bLabel]} rows={rows.map(r => [r.label, number.format(r.fixed), number.format(r.agent)])}>
+  <svg data-chart="paired" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+    {[0.6, 0.65, 0.7].map(v => <g>
+      <line x1={X(v)} y1="0" x2={X(v)} y2={rows.length * ROW + 4} class="grid" />
+      <text x={X(v)} y={rows.length * ROW + 24} class="ax" text-anchor="middle">{number.format(v)}</text>
+    </g>)}
     {dots.map((d) => (
       <g>
         <text x={labelW} y={d.cy + 3.8} class="lbl" text-anchor="end">{d.label}</text>
         <line x1={d.ax} y1={d.cy} x2={d.bx} y2={d.cy} class="conn" />
-        <circle cx={d.ax} cy={d.cy} r={R} class="dot-a"><title>{`${d.label} · ${aLabel}: ${d.fixed.toFixed(3).replace('.', ',')}`}</title></circle>
-        <circle cx={d.bx} cy={d.cy} r={R} class="dot-b"><title>{`${d.label} · ${bLabel}: ${d.agent.toFixed(3).replace('.', ',')}`}</title></circle>
+        <circle cx={d.ax} cy={d.cy} r={R} class="dot-a"><title>{`${d.label} · ${aLabel}: ${number.format(d.fixed)}`}</title></circle>
+        <circle cx={d.bx} cy={d.cy} r={R} class="dot-b"><title>{`${d.label} · ${bLabel}: ${number.format(d.agent)}`}</title></circle>
         <text x={W - 10} y={d.cy + 3.8} class="val" text-anchor="end">{d.delta}</text>
       </g>
     ))}
     <g>
       <circle cx={x0} cy={legendY} r={R} class="dot-a" />
       <text x={x0 + 12} y={legendY + 3.8} class="ax">{aLabel}</text>
-      <circle cx={x0 + 150} cy={legendY} r={R} class="dot-b" />
-      <text x={x0 + 162} y={legendY + 3.8} class="ax">{bLabel}</text>
+      <circle cx={x0 + 230} cy={legendY} r={R} class="dot-b" />
+      <text x={x0 + 242} y={legendY + 3.8} class="ax">{bLabel}</text>
     </g>
   </svg>
 </Figure>
@@ -68,6 +75,7 @@ const legendY = rows.length * ROW + 24;
   .val { fill: var(--ink); font-size: 11px; }
   .ax { fill: var(--muted); font-size: 10px; }
   .conn { stroke: var(--line-strong); stroke-width: 2; }
+  .grid { stroke: var(--line); stroke-dasharray: 2 5; }
   .dot-a { fill: var(--paper); stroke: var(--fill); stroke-width: 2; }
   .dot-b { fill: var(--fill); }
 </style>

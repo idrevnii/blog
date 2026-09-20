@@ -1,0 +1,38 @@
+---
+import { facts, fmt, type Lang } from '../../data/midas-charts';
+interface Props { lang?: Lang; }
+const { lang = 'ru' } = Astro.props;
+const ru = lang === 'ru';
+const lexicon = facts.insights.lexicon;
+const rows = lexicon.display_terms.map(term => lexicon.terms.find(r => r.term === term)!);
+const number = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmt(Math.abs(n), lang, 3)}`;
+---
+
+<div class="word-table">
+  <div class="table-scroll" tabindex="0" role="region" aria-label={ru ? 'Слова и ошибка прогноза' : 'Words and forecast error'}>
+    <table data-words>
+      <caption>{ru ? 'Связь слова с ошибкой Brier, измеренная корреляцией: от −1 до +1. Плюс — слово чаще встречается рядом с большей ошибкой, минус — с меньшей. Близко к нулю — слабая связь.' : 'Association between a word and Brier error, measured as a correlation from −1 to +1. Positive means the word tends to accompany larger errors; negative means smaller errors. Near zero means a weak association.'}</caption>
+      <thead><tr><th scope="col">{ru ? 'Слово' : 'Word'}</th><th scope="col">{ru ? 'Ответов' : 'Answers'}</th><th scope="col">{ru ? 'До поправки' : 'Before adjustment'}</th><th scope="col">{ru ? 'После поправки' : 'After adjustment'}</th></tr></thead>
+      <tbody>{rows.map(row => <tr data-term={row.term}>
+        <th scope="row">{row.term}</th><td>{row.n}</td><td>{number(row.r_brier)}</td><td>{number(row.r_adjusted)}</td>
+      </tr>)}</tbody>
+    </table>
+  </div>
+  <p>{ru ? '«После поправки» — связь, оставшаяся после удаления средних различий между матчами, моделями и режимами. Например, поправка учитывает, что какая-то модель и чаще использует слово, и в целом сильнее ошибается. Исследовано 19 слов и групп слов; здесь пять примеров с частотой не меньше 40 ответов.' : '“After adjustment” is the association that remains after removing average differences between matches, models and configurations. For example, it accounts for a model both using a word more often and making larger errors overall. I examined 19 words and word groups; these five examples each appear in at least 40 answers.'}</p>
+</div>
+
+<style>
+  .word-table { margin: 32px 0 40px; }
+  .table-scroll { max-width: 100%; overflow-x: auto; }
+  .word-table table { display: table; width: 100%; margin: 0; border-collapse: collapse; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; white-space: normal; }
+  .word-table caption { padding-bottom: 14px; color: var(--muted); text-align: left; font-size: 12px; white-space: normal; }
+  .word-table th, .word-table td { padding: 12px 8px; border-bottom: 1px solid var(--line); font-weight: 400; text-align: right; text-transform: none; letter-spacing: normal; }
+  .word-table th:first-child { padding-left: 0; text-align: left; color: var(--ink); }
+  .word-table thead th { color: var(--muted); }
+  .word-table td { white-space: nowrap; }
+  .word-table p { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+  @media (max-width: 760px) {
+    .word-table th, .word-table td { padding: 12px 4px; }
+    .word-table thead th { font-size: 10px; }
+  }
+</style>

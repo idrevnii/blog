@@ -13,6 +13,7 @@ export interface LineSeries {
 interface Props {
   title?: string;
   note?: string;
+  showSource?: boolean;
   series: LineSeries[];
   xLabels: string[];
   yTicks: Tick[];
@@ -21,7 +22,7 @@ interface Props {
   yLabel?: string;
 }
 
-const { title, note, series, xLabels, yTicks, yDomain, xLabel, yLabel } = Astro.props;
+const { title, note, series, xLabels, yTicks, yDomain, xLabel, yLabel, showSource = true } = Astro.props;
 
 const W = 680;
 const H = 310;
@@ -38,7 +39,10 @@ const X = (i: number) => L + (n > 1 ? (i / (n - 1)) * plotW : plotW / 2);
 const Y = (v: number) => T + (1 - (v - yDomain[0]) / (yDomain[1] - yDomain[0])) * plotH;
 
 const lines = series.map((s) => {
-  const pts = s.values.map((v, i) => ({ x: X(i), y: Y(v) }));
+  const pts = s.values.map((v, i) => ({
+    x: X(i), y: Y(v),
+    labelY: Y(v) + (v === Math.max(...series.map(other => other.values[i])) ? -12 : 18),
+  }));
   return {
     ...s,
     pts,
@@ -47,8 +51,8 @@ const lines = series.map((s) => {
 });
 ---
 
-<Figure {title} {note}>
-  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
+<Figure {title} {note} {showSource} headers={[Astro.url.pathname.includes('/ru/') ? 'Соперник' : 'Opponent', ...series.map(s => s.name)]} rows={xLabels.map((label, i) => [label, ...series.map(s => `${s.values[i].toFixed(1)}%`)])}>
+  <svg data-chart="lines" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
     {yTicks.map((t) => (
       <g>
         <line x1={L} y1={Y(t.value)} x2={L + plotW} y2={Y(t.value)} class="grid" />
@@ -56,15 +60,21 @@ const lines = series.map((s) => {
       </g>
     ))}
     {xLabels.map((label, i) => (
-      <text x={X(i)} y={H - B + 20} class="ax" text-anchor="middle">{label}</text>
+      <g>
+        <line x1={X(i)} y1={T} x2={X(i)} y2={T + plotH} class="guide" />
+        <text x={X(i)} y={H - B + 20} class="ax" text-anchor="middle">{label}</text>
+      </g>
     ))}
     {lines.map((line) => (
       <g>
         <path d={line.path} class={`line ${line.tone ?? 'ink'}`} />
         {line.pts.map((p, i) => (
-          <circle cx={p.x} cy={p.y} r="4.5" class={`dot ${line.tone ?? 'ink'}`}>
-            <title>{line.titles?.[i] ?? `${line.name}: ${line.values[i]}`}</title>
-          </circle>
+          <g>
+            <circle cx={p.x} cy={p.y} r="4.5" class={`dot ${line.tone ?? 'ink'}`}>
+              <title>{line.titles?.[i] ?? `${xLabels[i]} · ${line.name}: ${line.values[i].toFixed(1)}%`}</title>
+            </circle>
+            <text x={p.x} y={p.labelY} class="value" text-anchor="middle">{Math.round(line.values[i])}%</text>
+          </g>
         ))}
         <text x={line.pts[n - 1].x + 14} y={line.pts[n - 1].y + 3.5} class={`end ${line.tone ?? 'ink'}`}>{line.name}</text>
       </g>
@@ -78,10 +88,12 @@ const lines = series.map((s) => {
   text { font-family: var(--mono); }
   .ax { fill: var(--muted); font-size: 10.5px; }
   .grid { stroke: var(--line); }
+  .guide { stroke: var(--line); stroke-dasharray: 2 5; }
+  .value { fill: var(--ink); font-size: 11px; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
   .line.ink { fill: none; stroke: var(--fill); stroke-width: 2; stroke-linejoin: round; }
-  .line.muted { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; }
+  .line.muted { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-dasharray: 5 4; }
   .dot.ink { fill: var(--fill); }
-  .dot.muted { fill: var(--muted); }
+  .dot.muted { fill: var(--paper); stroke: var(--muted); stroke-width: 2; }
   .end { font-size: 11px; }
   .end.ink { fill: var(--ink); }
   .end.muted { fill: var(--muted); }

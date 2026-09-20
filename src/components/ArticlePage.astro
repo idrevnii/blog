@@ -2,7 +2,7 @@
 import { render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { formatDate, withBase } from '../lib/site';
-import { getReadingTime, postLang, type Post } from '../lib/posts';
+import { getReadingTime, getPostOgUrl, postLang, type Post } from '../lib/posts';
 
 interface Props {
   post: Post;
@@ -21,11 +21,13 @@ const toc = headings.filter(({ depth }) => depth === 2);
   section="articles"
   lang={postLang(post)}
   {alternatePath}
+  article={post.data}
+  imagePath={getPostOgUrl(post)}
 >
   <div class:list={['article-shell', { 'without-toc': toc.length === 0 }]}>
     <article>
       <header class="article-header">
-        <div class="article-meta meta">
+        <div class="article-meta">
           <time datetime={post.data.publishedAt.toISOString()}>{formatDate(post.data.publishedAt)}</time>
           <span>{getReadingTime(post.body)} {isRu ? 'мин чтения' : 'min read'}</span>
         </div>
@@ -40,7 +42,6 @@ const toc = headings.filter(({ depth }) => depth === 2);
 
     {toc.length > 0 && (
       <aside class="toc" aria-label={isRu ? 'Содержание' : 'Table of contents'}>
-        <p class="meta">{isRu ? 'содержание' : 'contents'}</p>
         <nav>
           {toc.map((heading) => <a href={`#${heading.slug}`}>{heading.text}</a>)}
         </nav>
@@ -55,9 +56,11 @@ const toc = headings.filter(({ depth }) => depth === 2);
 <style>
   .article-shell { display: grid; padding: clamp(32px, 4vw, 64px) var(--pad) 96px; grid-template-columns: minmax(0, 880px) minmax(200px, 280px); gap: clamp(48px, 6vw, 96px); }
   .article-shell.without-toc { display: block; max-width: 1000px; }
-  .article-header { padding-bottom: 48px; border-bottom: 1px solid var(--line); }
-  :global(.article-header:has(+ .prose > .tiles:first-child)) { padding-bottom: 0; border-bottom: 0; }
+  .article-header { margin-bottom: 48px; padding-bottom: 48px; border-bottom: 1px solid var(--line); }
+  :global(.article-header:has(+ .prose > .tiles:first-child)) { margin-bottom: 32px; padding-bottom: 0; border-bottom: 0; }
   .article-header .display-title { margin-bottom: 32px; white-space: pre-line; }
+  .article-header .lede { margin-bottom: 0; letter-spacing: normal; }
+  .article-meta { color: var(--muted); font-family: var(--sans); font-size: 13px; font-weight: 400; letter-spacing: normal; line-height: 1.6; }
   .article-meta { display: flex; align-items: center; gap: 12px; }
   .article-meta span::before { margin-right: 12px; content: '·'; }
   .toc { position: sticky; top: 64px; height: fit-content; }
@@ -77,12 +80,14 @@ const toc = headings.filter(({ depth }) => depth === 2);
   .prose :global(code) { padding: 2px 4px; border: 1px solid var(--line); background: var(--paper-deep); font-family: var(--mono); font-size: .82em; }
   /* background-color must be reset: the UA default is `Mark` (yellow), which otherwise
      sits under the gradient and turns unreadable against light text in dark mode. */
-  .prose :global(mark) { padding: 0 2px; background-color: transparent; background-image: linear-gradient(transparent 62%, light-dark(rgba(24, 24, 24, 0.16), rgba(232, 232, 229, 0.22)) 62%); color: inherit; }
+  .prose :global(mark) { padding: 0 2px; background-color: transparent; background-image: linear-gradient(transparent 62%, light-dark(rgba(24, 24, 24, 0.16), rgba(196, 196, 191, 0.22)) 62%); color: inherit; }
   .prose :global(hr) { margin: 48px 0; border: 0; border-top: 1px solid var(--line-strong); }
   .prose :global(.note) { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
   .prose :global(pre) { margin: 32px 0; padding: 16px 24px; overflow-x: auto; border: 1px solid var(--line); background: var(--paper-deep); font-size: 13.5px; line-height: 1.55; }
   .prose :global(pre code) { padding: 0; border: 0; background: none; font-size: inherit; }
   .prose :global(table) { width: 100%; margin: 32px 0 48px; border-collapse: collapse; font-family: var(--mono); font-size: 13px; line-height: 1.45; }
+  .prose :global(.table-overflow) { max-width: 100%; margin: 32px 0 48px; overflow-x: auto; }
+  .prose :global(.table-overflow > table) { margin: 0; }
   .prose :global(th) { color: var(--muted); font-size: 11px; font-weight: 500; text-align: left; text-transform: uppercase; }
   .prose :global(th), .prose :global(td) { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   .prose :global(th:first-child), .prose :global(td:first-child) { padding-left: 0; }
@@ -94,9 +99,18 @@ const toc = headings.filter(({ depth }) => depth === 2);
   @media (max-width: 1100px) { .article-shell { display: block; } .toc { display: none; } }
   @media (max-width: 760px) {
     .article-shell { padding: 32px 16px 64px; }
-    .article-header { padding-bottom: 32px; }
+    .article-header { margin-bottom: 32px; padding-bottom: 32px; }
     .prose { font-size: 16px; }
     .prose :global(h2) { margin-top: 64px; }
     .prose :global(table) { display: block; overflow-x: auto; white-space: nowrap; }
+    .prose :global(.table-overflow > table), .prose :global(.fig-table > table) { display: table; overflow: visible; }
   }
+  .prose :global(table.compact-comparison) { display: table; table-layout: fixed; white-space: normal; }
+  .prose :global(.compact-comparison th:first-child) { width: 50%; }
+  .prose :global(.compact-comparison td:first-child) { overflow-wrap: anywhere; }
+  .prose :global(.compact-comparison th:not(:first-child)),
+  .prose :global(.compact-comparison td:not(:first-child)) { text-align: right; }
+  .prose :global(.compact-comparison td:not(:first-child)) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .prose :global(.compact-comparison th:last-child),
+  .prose :global(.compact-comparison td:last-child) { padding-right: 0; }
 </style>

@@ -17,20 +17,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SITE_URL: https://anc13nt.dev
+      BASE_PATH: /
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
-      - name: Configure GitHub Pages URL
-        shell: bash
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          echo "SITE_URL=https://${GITHUB_REPOSITORY_OWNER}.github.io" >> "$GITHUB_ENV"
-          if [[ "$REPO_NAME" == "${GITHUB_REPOSITORY_OWNER}.github.io" ]]; then
-            echo "BASE_PATH=/" >> "$GITHUB_ENV"
-          else
-            echo "BASE_PATH=/$REPO_NAME" >> "$GITHUB_ENV"
-          fi
 
       - name: Install, build and upload site
         uses: withastro/action@v6

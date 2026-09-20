@@ -1,0 +1,37 @@
+---
+import { facts, modeKeys, modeLabels, type Lang } from '../../data/midas-charts';
+
+interface Props { lang?: Lang; }
+const { lang = 'ru' } = Astro.props;
+const ru = lang === 'ru';
+const stability = facts.insights.configuration_stability;
+const winners = stability.summary.filter(row => row.first_count > 0);
+---
+
+<div class="stability">
+  <table data-midas-stability>
+    <caption>{ru
+      ? `Кто занимал первое место, когда из расчёта убирали одну серию. Всего ${stability.trials_count} проверок всех ${stability.configurations_count} сочетаний; ниже те, кто хотя бы раз оказался первым.`
+      : `Who finished first when one series was omitted. ${stability.trials_count} checks of all ${stability.configurations_count} combinations; only combinations that finished first at least once are shown.`}</caption>
+    <thead><tr>
+      <th scope="col">{ru ? 'Модель и режим' : 'Model and configuration'}</th>
+      <th scope="col">{ru ? 'Первых мест' : 'First-place finishes'}</th>
+    </tr></thead>
+    <tbody>{winners.map(row => <tr data-model={row.model} data-cell={row.cell}>
+      <th scope="row">{row.model}<span>{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th>
+      <td>{row.first_count} {ru ? 'из' : 'of'} {stability.trials_count}</td>
+    </tr>)}</tbody>
+  </table>
+</div>
+
+<style>
+  .stability { margin: 32px 0; }
+  .stability table { display: table; width: 100%; margin: 0; border-collapse: collapse; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; white-space: normal; }
+  .stability caption { padding-bottom: 14px; color: var(--muted); text-align: left; font-size: 12px; }
+  .stability th, .stability td { padding: 12px 8px; border-bottom: 1px solid var(--line); font-weight: 400; text-transform: none; letter-spacing: normal; }
+  .stability th:first-child { padding-left: 0; text-align: left; }
+  .stability th:last-child, .stability td { text-align: right; }
+  .stability td { white-space: nowrap; }
+  .stability thead { color: var(--muted); }
+  .stability span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+</style>

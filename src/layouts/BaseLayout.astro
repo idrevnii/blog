@@ -1,7 +1,12 @@
 ---
 import { Icon } from 'astro-icon/components';
 import { site, withBase } from '../lib/site';
-import type { Language } from '../lib/posts';
+import type { Language, Post } from '../lib/posts';
+import { singleLine, structuredData, serializeJsonLd } from '../lib/seo';
+import '@fontsource-variable/jetbrains-mono/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght-italic.css';
+import '@fontsource-variable/roboto/wght.css';
+import '@fontsource-variable/roboto/wght-italic.css';
 import '../styles/global.css';
 
 interface Props {
@@ -10,19 +15,29 @@ interface Props {
   section?: 'index' | 'articles' | 'about';
   lang?: Language;
   alternatePath?: string;
+  article?: Post['data'];
+  noindex?: boolean;
+  imagePath?: string;
 }
 
-const { title, description = site.description, section, lang = 'en', alternatePath } = Astro.props;
+const { title, section, lang = 'en', alternatePath, article, noindex = false } = Astro.props;
 const isRu = lang === 'ru';
+const description = Astro.props.description ?? (isRu ? site.descriptionRu : site.description);
 const prefix = isRu ? 'ru/' : '';
 const personName = isRu ? site.nameRu : site.name;
 const pageTitle = title
-  ? `${title} - ${personName}`
+  ? `${singleLine(title)} - ${personName}`
   : isRu
     ? `${site.nameRu} - AI-инженер и исследователь`
     : `${site.name} - AI engineer & researcher`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const alternate = alternatePath !== undefined ? new URL(withBase(alternatePath), Astro.site) : undefined;
+const imageUrl = new URL(Astro.props.imagePath ?? withBase('og.png'), Astro.site);
+const imageAlt = article ? singleLine(article.title) : site.name;
+const authorUrl = new URL(withBase(`${prefix}about/`), Astro.site);
+const schema = !noindex && Astro.site ? structuredData({
+  origin: Astro.site, canonical, title: pageTitle, description, lang, section, article,
+}) : undefined;
 // Language switch: translated page if it exists, otherwise the other language's home.
 const switchHref = withBase(alternatePath ?? (isRu ? '' : 'ru/'));
 const nav = isRu
@@ -49,30 +64,52 @@ const themeLabels = isRu
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? 'noindex, follow' : 'max-image-preview:large'} />
+    <meta name="author" content={personName} />
     <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#131313" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#1b1b1b" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
-    <link rel="canonical" href={canonical} />
-    {alternate && <link rel="alternate" hreflang={isRu ? 'en' : 'ru'} href={alternate} />}
-    <meta property="og:type" content="website" />
+    {!noindex && <link rel="canonical" href={canonical} />}
+    {!noindex && alternate && <>
+      <link rel="alternate" hreflang={lang} href={canonical} />
+      <link rel="alternate" hreflang={isRu ? 'en' : 'ru'} href={alternate} />
+      <link rel="alternate" hreflang="x-default" href={isRu ? alternate : canonical} />
+    </>}
+    <link rel="sitemap" type="application/xml" href={withBase('sitemap.xml')} />
+    {article && <link rel="author" href={authorUrl} />}
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:site_name" content={site.name} />
     <meta property="og:locale" content={isRu ? 'ru_RU' : 'en_US'} />
+    {alternate && <meta property="og:locale:alternate" content={isRu ? 'en_US' : 'ru_RU'} />}
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={new URL(withBase('og.png'), Astro.site)} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content={imageAlt} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={imageAlt} />
+    {article && <>
+      <meta property="article:published_time" content={article.publishedAt.toISOString()} />
+      {article.updatedAt && <meta property="article:modified_time" content={article.updatedAt.toISOString()} />}
+      <meta property="article:author" content={authorUrl} />
+    </>}
+    {schema && <script is:inline type="application/ld+json" set:html={serializeJsonLd(schema)} />}
     <title>{pageTitle}</title>
     <script is:inline>
       try {
         const stored = localStorage.getItem('theme');
-        if (stored) document.documentElement.dataset.theme = stored;
+        if (stored === 'light' || stored === 'dark') document.documentElement.dataset.theme = stored;
       } catch {}
-      document.documentElement.dataset.js = '';
     </script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">{isRu ? 'Перейти к содержимому' : 'Skip to content'}</a>
     <div class="page-shell">
       <aside class="sidebar">
         <div class="sidebar-inner">
@@ -112,7 +149,7 @@ const themeLabels = isRu
         </div>
       </aside>
 
-      <main class="main">
+      <main class="main" id="main-content" tabindex="-1">
         <slot />
       </main>
     </div>
@@ -120,12 +157,17 @@ const themeLabels = isRu
     <script>
       const button = document.querySelector<HTMLButtonElement>('.mobile-menu');
       const nav = document.querySelector<HTMLElement>('#site-nav');
-      button?.addEventListener('click', () => {
-        const open = button.getAttribute('aria-expanded') === 'true';
-        button.setAttribute('aria-expanded', String(!open));
-        button.textContent = open ? button.dataset.openLabel ?? 'menu +' : button.dataset.closeLabel ?? 'menu −';
-        nav?.classList.toggle('is-open', !open);
-      });
+      if (button && nav) {
+        button.addEventListener('click', () => {
+          const open = button.getAttribute('aria-expanded') === 'true';
+          button.setAttribute('aria-expanded', String(!open));
+          button.textContent = open ? button.dataset.openLabel ?? 'menu +' : button.dataset.closeLabel ?? 'menu −';
+          nav.classList.toggle('is-open', !open);
+        });
+        // Collapse navigation only once its control is working.
+        nav.dataset.collapsible = '';
+        button.dataset.ready = '';
+      }
 
       const html = document.documentElement;
       const themeButton = document.querySelector<HTMLButtonElement>('.theme-toggle');
@@ -140,13 +182,18 @@ const themeLabels = isRu
         const next = modes[(modes.indexOf((html.dataset.theme ?? 'auto') as typeof modes[number]) + 1) % modes.length];
         if (next === 'auto') {
           delete html.dataset.theme;
-          localStorage.removeItem('theme');
         } else {
           html.dataset.theme = next;
-          localStorage.setItem('theme', next);
         }
         syncLabel();
+        try {
+          if (next === 'auto') localStorage.removeItem('theme');
+          else localStorage.setItem('theme', next);
+        } catch {
+          // Theme switching still works when saving preferences is unavailable.
+        }
       });
+      html.dataset.js = '';
     </script>
   </body>
 </html>

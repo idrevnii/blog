@@ -1,0 +1,47 @@
+---
+import { facts, fmt, modeKeys, modeLabels, type Lang } from '../../data/midas-charts';
+
+interface Props { lang?: Lang; }
+const { lang = 'ru' } = Astro.props;
+const ru = lang === 'ru';
+const modeIndex = (cell: string) => modeKeys.indexOf(cell as typeof modeKeys[number]);
+const rows = [...facts.insights.configuration_costs.configurations].sort((a, b) =>
+  a.model.localeCompare(b.model) || modeIndex(a.cell) - modeIndex(b.cell));
+---
+
+<div class="configuration-costs">
+  <table data-midas-all-costs>
+    <caption>{ru
+      ? 'Стоимость в долларах по логам зачётных ответов. Без повторов, ошибок и отдельной оплаты поиска. Число ответов различается из-за пропусков и исключений.'
+      : 'Recorded cost in USD for eligible forecasts. Excludes retries, failures and separately billed search. Counts vary due to missing and excluded forecasts.'}</caption>
+    <thead><tr>
+      <th scope="col">{ru ? 'Модель и режим' : 'Model and configuration'}</th>
+      <th scope="col">{ru ? 'Всего' : 'Total'}</th>
+      <th scope="col">{ru ? 'За ответ' : 'Per forecast'}</th>
+    </tr></thead>
+    <tbody>{rows.map((row, index) => <tr
+      class:list={{ 'model-start': index > 0 && rows[index - 1].model !== row.model }}
+      data-model={row.model} data-cell={row.cell} data-count={row.n}
+    >
+      <th scope="row">
+        {row.model}
+        <span>{modeLabels[lang][modeIndex(row.cell)]}</span>
+        <span>{ru ? `Зачётных ответов: ${row.n}` : `Eligible forecasts: ${row.n}`}</span>
+      </th>
+      <td>${fmt(row.total, lang, 3)}</td>
+      <td>${fmt(row.per_forecast, lang, 4)}</td>
+    </tr>)}</tbody>
+  </table>
+</div>
+
+<style>
+  .configuration-costs table { display: table; table-layout: fixed; width: 100%; margin: 0; border-collapse: collapse; white-space: normal; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .configuration-costs caption { padding-bottom: 16px; color: var(--muted); text-align: left; font-size: 12px; }
+  .configuration-costs th, .configuration-costs td { padding: 12px 6px; border-bottom: 1px solid var(--line); font-weight: 400; text-transform: none; letter-spacing: normal; text-align: right; }
+  .configuration-costs th:first-child { width: 52%; padding-left: 0; text-align: left; overflow-wrap: anywhere; }
+  .configuration-costs th:last-child, .configuration-costs td:last-child { padding-right: 0; }
+  .configuration-costs tbody th { color: var(--ink); }
+  .configuration-costs td { white-space: nowrap; }
+  .configuration-costs span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+  .configuration-costs .model-start th, .configuration-costs .model-start td { border-top: 1px solid var(--line-strong); padding-top: 20px; }
+</style>

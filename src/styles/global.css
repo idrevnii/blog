@@ -4,21 +4,23 @@
  */
 :root {
   color-scheme: light dark;
-  --paper: light-dark(#f6f6f4, #131313);
-  --paper-deep: light-dark(#ebebe8, #1c1c1c);
-  --ink: light-dark(#181818, #e8e8e5);
-  --muted: light-dark(#6e6e6c, #8f8f8c);
-  --faint: light-dark(#9a9995, #6b6b68);
-  --line: light-dark(rgba(24, 24, 24, 0.13), rgba(232, 232, 229, 0.14));
-  --line-strong: light-dark(rgba(24, 24, 24, 0.22), rgba(232, 232, 229, 0.24));
+  --paper: light-dark(#f6f6f4, #1b1b1b);
+  --paper-deep: light-dark(#ebebe8, #242424);
+  /* Dark body text stays at 9.8:1 contrast without the near-white glare. */
+  --ink: light-dark(#181818, #c4c4bf);
+  /* Muted text stays above 4.5:1 on both the page and inset surfaces. */
+  --muted: light-dark(#656563, #8f8f8c);
+  --faint: light-dark(#85847f, #6b6b68);
+  --line: light-dark(rgba(24, 24, 24, 0.13), rgba(196, 196, 191, 0.14));
+  --line-strong: light-dark(rgba(24, 24, 24, 0.22), rgba(196, 196, 191, 0.24));
   /* Chart ink, deliberately a step below --ink. Painting bars with the text colour
      makes a near-white slab on the dark paper that outshouts the prose. */
-  --fill: light-dark(#20201f, #d2d2ce);
-  --fill-soft: light-dark(#8f8e89, #6e6e69);
+  --fill: light-dark(#20201f, #b0b0aa);
+  --fill-soft: light-dark(#85847f, #6e6e69);
   --sidebar: clamp(250px, 19vw, 270px);
   --pad: clamp(24px, 4vw, 64px);
-  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono: 'JetBrains Mono Variable', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: 'Roboto Variable', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -59,6 +61,9 @@ body::before {
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
 
+.skip-link { position: fixed; z-index: 30; top: 16px; left: 16px; max-width: calc(100% - 32px); padding: 12px 16px; color: var(--ink); background: var(--paper); }
+.skip-link:not(:focus) { width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 a { color: inherit; text-decoration-color: var(--faint); text-underline-offset: 0.2em; }
 a:hover { text-decoration-color: currentColor; }
 img, svg { display: block; max-width: 100%; }
@@ -91,14 +96,14 @@ img, svg { display: block; max-width: 100%; }
   font-weight: 650;
   letter-spacing: -0.035em;
 }
-.identity-role { color: var(--muted); font-family: var(--mono); font-size: 13px; letter-spacing: -0.02em; }
+.identity-role { color: var(--muted); font-family: var(--sans); font-size: 13px; letter-spacing: normal; }
 .sidebar-foot { display: flex; margin-top: auto; align-items: center; gap: 16px; }
 .language-switch { display: flex; gap: 8px; color: var(--faint); font-family: var(--mono); font-size: 12px; letter-spacing: .04em; line-height: 1.2; }
 .language-switch a { color: var(--muted); text-decoration: none; }
 .language-switch a:hover { color: var(--ink); }
 .language-switch [aria-current='true'] { color: var(--ink); font-weight: 650; }
 
-/* Hidden until the inline script confirms JS; a dead control should not render. */
+/* Show the control only after its event handler is attached. */
 .theme-toggle { display: none; padding: 0; border: 0; color: var(--muted); background: none; line-height: 0; cursor: pointer; }
 :root[data-js] .theme-toggle { display: block; }
 .theme-toggle:hover { color: var(--ink); }
@@ -190,25 +195,25 @@ img, svg { display: block; max-width: 100%; }
     column-gap: 12px;
     align-items: start;
   }
-  .sidebar-foot { grid-column: 2; grid-row: 1; margin-top: 8px; gap: 12px; justify-self: end; }
+  .sidebar-foot { grid-column: 2; grid-row: 1; min-height: 32px; margin-top: 0; gap: 12px; justify-self: end; }
   .identity-role { font-size: 10px; }
   .nav {
-    display: none;
     grid-column: 1 / -1;
     margin: 24px 0 0;
     gap: 8px;
   }
-  .nav.is-open { display: flex; }
+  .nav[data-collapsible]:not(.is-open) { display: none; }
+  .mobile-menu[data-ready] { display: inline-block; }
   .mobile-menu {
-    display: inline-block;
     grid-column: 3;
     grid-row: 1;
+    min-height: 32px;
     padding: 4px 0;
     border: 0;
     color: var(--ink);
     background: transparent;
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--sans);
+    font-size: 12px;
     text-transform: uppercase;
     cursor: pointer;
   }

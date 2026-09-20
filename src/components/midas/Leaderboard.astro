@@ -1,0 +1,81 @@
+---
+import { facts, fmt, modeKeys, modeLabels, type Lang } from '../../data/midas-charts';
+interface Props { lang?: Lang; }
+const { lang = 'ru' } = Astro.props;
+const ru = lang === 'ru';
+const configurations = facts.insights.configurations;
+const leaders = configurations.slice(0, 12);
+const benchmarks = [
+  { id: 'early', label: ru ? 'Ранняя линия' : 'Early line', note: ru ? 'Первый сохранённый снимок' : 'First saved snapshot', ...facts.leaderboard.market_pre },
+  { id: 'closing', label: ru ? 'Поздняя линия' : 'Closing line', note: ru ? 'Последний сохранённый снимок' : 'Last saved snapshot', ...facts.leaderboard.market_close },
+];
+const withBenchmarks = (rows: typeof configurations) =>
+  [...rows, ...benchmarks].sort((a, b) => a.brier - b.brier);
+const number = (n: number, digits = 4) => fmt(n, lang, digits);
+const delta = (n: number) => `${n >= 0 ? '+' : '−'}${number(Math.abs(n))}`;
+---
+
+<section class="leaderboard" aria-label={ru ? 'Лидерборд сочетаний модели и режима' : 'Model and configuration leaderboard'}>
+  <div class="table-scroll" tabindex="0" role="region" aria-label={ru ? '12 лучших сочетаний модели и режима' : 'Top 12 model and configuration combinations'}>
+    <table data-leaderboard="top-configurations">
+      <caption>{ru ? `12 лучших сочетаний «модель + режим» из ${configurations.length} и две букмекерские линии. Brier: меньше — лучше. Δ к рынку = Brier модели − Brier ранней линии на тех же сериях. Например, +0,0018 означает, что Brier модели выше на 0,0018. Поздняя линия доступна для ${facts.leaderboard.market_close.n} серий из ${facts.leaderboard.market_pre.n}.` : `Top 12 model–configuration combinations out of ${configurations.length}, plus two bookmaker lines. Lower Brier is better. Δ vs market = model Brier − early-line Brier on the same series. For example, +0.0018 means the model’s Brier is higher by 0.0018. The closing line is available for ${facts.leaderboard.market_close.n} of ${facts.leaderboard.market_pre.n} series.`}</caption>
+      <thead><tr>
+        <th scope="col">#</th><th scope="col">{ru ? 'Модель и режим' : 'Model and configuration'}</th>
+        <th scope="col">Brier ↓</th><th scope="col">{ru ? 'Δ к рынку' : 'Δ vs market'}</th>
+        <th scope="col">{ru ? 'Серий' : 'Series'}</th>
+      </tr></thead>
+      <tbody>
+        {withBenchmarks(leaders).map(row => 'id' in row ? <tr class="benchmark" data-benchmark={row.id} data-brier={row.brier}>
+          <td>—</td><th scope="row">{row.label}<span>{row.note}</span></th>
+          <td>{number(row.brier)}</td><td>—</td><td>{row.n}</td>
+        </tr> : <tr data-model={row.model} data-cell={row.cell} data-brier={row.brier}>
+          <td>{row.rank}</td><th scope="row">{row.model}<span>{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th><td>{number(row.brier)}</td>
+          <td>{delta(row.market_delta)}</td><td>{row.n}</td>
+        </tr>)}
+      </tbody>
+    </table>
+  </div>
+  <details>
+    <summary>{ru ? 'Все 48 результатов по моделям и режимам' : 'All 48 model and configuration results'}</summary>
+    <div class="table-scroll" tabindex="0" role="region" aria-label={ru ? 'Рейтинг 48 конфигураций' : 'Ranking of 48 configurations'}>
+      <table data-leaderboard="configurations">
+        <caption>{ru ? 'В каждом режиме использованы все его зачётные ответы. Рынок пересчитан на тех же сериях.' : 'Each configuration uses all of its eligible forecasts. Its market comparison uses the same series.'}</caption>
+        <thead><tr>
+          <th scope="col">#</th><th scope="col">{ru ? 'Модель и режим' : 'Model and configuration'}</th>
+          <th scope="col">Brier ↓</th><th scope="col">{ru ? 'Δ к рынку' : 'Δ vs market'}</th>
+          <th scope="col">{ru ? 'Серий' : 'Series'}</th>
+        </tr></thead>
+        <tbody>
+        {withBenchmarks(configurations).map(row => 'id' in row ? <tr class="benchmark" data-benchmark={row.id} data-brier={row.brier}>
+          <td>—</td><th scope="row">{row.label}<span>{row.note}</span></th>
+          <td>{number(row.brier)}</td><td>—</td><td>{row.n}</td>
+        </tr> : <tr data-model={row.model} data-cell={row.cell} data-brier={row.brier}>
+          <td>{row.rank}</td><th scope="row">{row.model}<span>{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th>
+          <td>{number(row.brier)}</td><td>{delta(row.market_delta)}</td><td>{row.n}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<style>
+  .leaderboard { margin: 32px 0 40px; }
+  .table-scroll { max-width: 100%; overflow-x: auto; }
+  .leaderboard table { display: table; width: 100%; min-width: 540px; margin: 0; border-collapse: collapse; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .leaderboard caption { padding-bottom: 14px; text-align: left; color: var(--muted); font-size: 12px; white-space: normal; }
+  .leaderboard th, .leaderboard td { padding: 11px 8px; border-bottom: 1px solid var(--line); font-weight: 400; text-transform: none; letter-spacing: normal; white-space: nowrap; }
+  .leaderboard thead th { color: var(--muted); }
+  .leaderboard tbody th { text-align: left; color: var(--ink); }
+  .leaderboard td { text-align: right; }
+  .leaderboard th:nth-child(n+3) { text-align: right; }
+  .leaderboard th:first-child, .leaderboard td:first-child { padding-left: 0; text-align: left; color: var(--muted); }
+  .leaderboard .benchmark th, .leaderboard .benchmark td { font-weight: 600; border-bottom-color: var(--line-strong); }
+  .leaderboard span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; white-space: normal; }
+  .leaderboard details { margin-top: 24px; border-top: 1px solid var(--line); }
+  .leaderboard summary { padding: 12px 0; color: var(--muted); cursor: pointer; font-size: 13px; }
+  @media (max-width: 760px) {
+    .leaderboard table { min-width: 0; font-size: 11px; }
+    .leaderboard th, .leaderboard td { padding: 10px 4px; }
+    .leaderboard thead th { font-size: 10px; white-space: normal; }
+  }
+</style>

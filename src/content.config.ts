@@ -8,7 +8,11 @@ const posts = defineCollection({
     title: z.string(),
     description: z.string(),
     publishedAt: z.coerce.date(),
+    updatedAt: z.coerce.date().optional(),
     draft: z.boolean().default(false),
+  }).refine((post) => !post.updatedAt || post.updatedAt >= post.publishedAt, {
+    message: 'updatedAt must not be earlier than publishedAt',
+    path: ['updatedAt'],
   }),
 });
 

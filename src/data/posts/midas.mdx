@@ -1,631 +1,357 @@
 ---
-title: "A benchmark you can't overfit:\n12 LLMs vs the bookmaker"
-description: "12 models, 4 modes and $25.51 against a bookmaker's line across a full The International 2026 playoff bracket. Nobody beat the line — but the runs did show how much noise sits in an ordinary LLM leaderboard, what an agent really does with web search, and why 12 'independent' model opinions from nine providers are one opinion."
-publishedAt: 2026-08-26
+title: "I tried to beat\na bookmaker with AI"
+description: "Twelve models made forecasts for The International 2026 and picked virtual bets. None turned a profit. After the tournament, I looked at where they lost money and how the odds helped them."
+publishedAt: 2026-09-20
 ---
 
 import StatTiles from '../../components/midas/StatTiles.astro';
-import Takeaway from '../../components/midas/Takeaway.astro';
 import Quote from '../../components/midas/Quote.astro';
 import Collapsible from '../../components/midas/Collapsible.astro';
 import HBars from '../../components/midas/HBars.astro';
 import Dumbbell from '../../components/midas/Dumbbell.astro';
-import Reliability from '../../components/midas/Reliability.astro';
 import LineChart from '../../components/midas/LineChart.astro';
-import Scatter from '../../components/midas/Scatter.astro';
-import {
-  enRows, enLabels,
-  brierModes, leaderboard, moneyBoard, headGap, sweepBias,
-  bootstrapTop, webDeltas, kScale, reliability, domains,
-  ensembleTicks, ensembleValues, roiSegments, roiEdge,
-  lengthPoints, lengthTicksX, lengthTicksY, vocabBase, vocab,
-  anchorRows, brands, spiritStages, spiritModels, spiritMarket, spiritTicks,
-  costPoints, costTicksX, costTicksY,
-} from '../midas-charts';
+import Leaderboard from '../../components/midas/Leaderboard.astro';
+import WordTable from '../../components/midas/WordTable.astro';
+import ConfigurationStability from '../../components/midas/ConfigurationStability.astro';
+import ConfigurationCosts from '../../components/midas/ConfigurationCosts.astro';
+import { facts, charts, fmt } from '../midas-charts';
+import deepDive from '../../../public/research/midas/deep-dive.json';
 
-<StatTiles
-  cols={3}
-  items={[
-    { value: '1,206', label: 'runs', note: '667 of them scored' },
-    { value: '12', label: 'models', note: '×2 pipelines ×2 modes' },
-    { value: '$25.51', label: 'budget', note: '42.9M tokens' },
-    { value: '8,012', label: 'tool calls', note: '466 agent trajectories' },
-    { value: '14', label: 'playoff series', note: '20–23 August 2026' },
-    { value: '514', label: 'virtual bets', note: 'ROI −28.8%' },
-  ]}
-/>
+Before the grand final of The International 2026, the biggest annual Dota 2 tournament, I collected 48 forecasts for the series from twelve LLMs in four configurations. The models studied Dota statistics, head-to-head results and hero picks. In the fixed-context configurations, they received prepared data; as agents, each searched the web on its own. All 48 forecasts favored Team Vision, which was also the bookmaker's favorite. It ended up losing to Team Spirit.
 
-A benchmark can be gamed: peek at the test set, overfit, quietly loosen the conditions for a candidate you like. A bookmaker's line can't. It's published before the event, there's money behind it, and its margin is measurable — 4.9% across the lines I picked. I wanted a judge you can't charm.
+hy3, for example, gave Team Vision a 78% chance. The explanation sounded quite convincing: the team had beaten Team Spirit before, had a higher Elo rating and was looking stronger at the tournament. But at the end, the model still left room for this:
 
-If LLMs can really reason over data, they ought to get somewhere near the line. I built a lab, pointed it at the entire The International 2026 playoff bracket, and logged everything it did: prompts, answers, agent trajectories, price snapshots.
+<Quote source="hy3 · fixed context, no odds">
 
-In the end, not one of the 12 models, in any of the 4 modes, beat the opening line. When I swept blends of model and market, the optimal weight on the model came out at zero: the LLMs added nothing to the line.
+“Spirit's best chance is a 3-2 upset.”
 
-A post about only that result would be dull, but the most interesting material is what the lab logged on the way: how much noise sits inside an ordinary LLM leaderboard, what an agent actually does when you hand it the internet, why twelve "independent" opinions from nine providers are one opinion bought twelve times, and how a model manages to state two different numbers for the same event inside a single answer.
+</Quote>
 
-## The leaderboard
+[Spirit won 3–2](https://blast.tv/dota/tournaments/the-international-2026/series).
 
-Metric is the Brier score — mean squared error of a probability, lower is better. Each model played the tournament in four modes — two ways to gather context × two levels of price knowledge, more on those below — so the leaderboard takes each model's best result, with the mode signed next to it. On the same scale: both bookmaker lines, the models' consensus, and a coin flip.
+So the outcome that actually happened was right there in the answer. Except the model had left Spirit with 22%, confidently favoring VISION. It's a fairly familiar feeling when working with LLMs: you read the explanation, it all seems reasonable, the risks are accounted for, even the unexpected outcome gets a mention. But how accurately do LLMs estimate probabilities overall?
 
-<HBars
-  title="Best mode of each of the 12 models — Brier, shorter is better"
-  note="The tag next to a model is the mode of its best result; the modes are unpacked below. Outlined bars are the comparisons: both bookmaker lines and the consensus of the twelve models, computed over every forecast of the tournament. The muted bar is the coin flip."
-  rows={enRows(leaderboard)}
-/>
+One final can't tell us that. Events with a 22% chance should happen sometimes, or there's something wrong with the probabilities. So I looked at the whole tournament, examined the bets separately, and checked what changed when I gave the models tools or showed them the bookmaker's view.
 
-The champion on paper is deepseek-v4-flash — the best of the forty-eight model × mode combinations. Across all modes at once, in the pooled standings, it's ninth of twelve. Keep that in mind; we'll get back to the noise.
+## How I set it up
 
-<mark>Even with its best mode picked in hindsight, no model beat the opening line.</mark> The best combination trails it by 0.0018 Brier and the worst by 0.019, and the entire spread between the twelve "best modes" — 0.0175 — is an order of magnitude larger than the leader's gap. Eleven of the twelve do beat the closing line; gpt-5.6-terra clears it by nine millionths. The market ruined its own forecast between opening and start — more on that below.
+I named the project Midas, after the Dota item that turns a creep into extra gold. A creep is an in-game unit that gives your hero gold and experience for leveling up when you kill it. The idea was simple: give several models data on the teams and see whether they could find an edge over the bookmaker's odds. All bets were virtual.
 
-Now honestly, without picking the best — the same models across all four modes:
+I used the 14 series of the TI 2026 main event, played August 20–23. If you don't follow Dota, a series consists of individual games, also called maps. Most are first to two wins; the grand final is first to three. Besides betting on the series winner, you can bet on a map handicap. For example, backing a team at −1.5 in a first-to-two series only pays out if it wins 2–0. A 2–1 victory means the bet loses.
 
-<HBars
-  title="Brier by mode — shorter is better"
-  note="The best single configuration — deepseek-v4-flash in agent · odds_aware (Brier 0.1983, 78.6% accuracy) — is still worse than the line."
-  rows={enRows(brierModes)}
-/>
+Each of the twelve models answered in four configurations:
 
-<Collapsible summary="mode table">
+1. **Fixed context without odds.** The model receives prepared data and estimates probabilities.
+2. **Fixed context with odds.** It receives the same data plus bookmaker odds, estimates probabilities and selects bets.
+3. **Agent without odds.** It gathers data using tools and estimates probabilities. Searching for odds is forbidden.
+4. **Agent with odds.** It gathers data, checks bookmaker odds, estimates probabilities and selects bets.
 
-| mode | Brier | log loss | accuracy | exact score | n |
-|---|---:|---:|---:|---:|---:|
-| fixed·odds_aware | 0.2142 | 0.616 | 69.6% | 29.2% | 168 |
-| agent·odds_aware | 0.2167 | 0.622 | 65.7% | 28.9% | 166 |
-| fixed·price_blind | 0.2183 | 0.625 | 63.1% | 30.4% | 168 |
-| agent·price_blind | 0.2557 | 0.706 | 55.2% | 17.6% | 165 |
-| market (pre) | 0.1964 | 0.581 | 71.4% | — | 14 |
-| market (closing) | 0.2155 | 0.622 | 61.5% | — | 13 |
+The prepared context included Elo, recent results, head-to-head history, drafts, team workload and the bracket. Agents could use OpenDota, Liquipedia, search and page-reading tools. The configurations without odds were there for a fairly obvious reason: if you show a model the bookmaker's favorite up front, it's hard to tell where its own estimate came from.
+
+I asked for a probability distribution over exact scores: for example, 2–0, 2–1, 1–2 and 0–2. From that, you can derive a team's win probability and evaluate handicaps. In the configurations with odds, the model also selected bets and stake sizes.
+
+<StatTiles cols={4} items={[
+  { value: String(facts.scale.graded), label: 'scored forecasts', note: '14 series · 4 configurations' },
+  { value: String(facts.scale.models.length), label: 'models', note: 'each in four configurations' },
+  { value: fmt(facts.scale.tool_calls, 'en', 0), label: 'tool calls', note: 'across 466 agent trajectories' },
+  { value: `$${fmt(facts.scale.cost_total, 'en', 2)}`, label: 'cost in usage logs', note: 'excludes separate search costs' },
+]} />
+
+The 666 are the selected forecasts made before matches. Tool calls and the $25.51 cover the whole saved experiment, including retries and errors. The cost is the sum of recorded usage, excluding separate search charges and the later Astra run.
+
+And here's a limitation that will become very noticeable: **666 forecasts still cover just 14 series outcomes**. Twelve models betting on the same match several times doesn't create any extra matches.
+
+<Collapsible summary="Models, run selection and comparison limits">
+
+The models were deepseek-v4-flash, deepseek-v4-pro, gemini-3.7-flash, glm-5.3, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, grok-4.6, hy3, kimi-k3, minimax-3 and qwen3.8-max. Temperature was 1.0; reasoning used the highest setting available through each integration.
+
+Of 1,206 runs, 883 were forecasts made before a series began. Selecting successful canonical runs left 670: the first successful run for each task counted unless it had been explicitly invalidated. The latest audit decisions excluded two more contaminated agent runs, and the timestamp check removed two late answers. That left 666, submitted a median 4.8 hours before the recorded start.
+
+The two late answers surfaced while I was preparing this article: the `post_start` flag hadn't fired when the live tracker lacked a start time. The script now compares the answer timestamp directly against the start, falling back to the schedule if it's missing. Runs 907 and 910 are excluded.
 
 </Collapsible>
 
-Then the question you don't enjoy asking: how much model is worth mixing into the market? I swept `w·consensus + (1−w)·market` in steps of 0.05. The optimum is w = 0. On this sample, any amount of LLM you add to the line makes Brier worse, and it degrades monotonically.
+## Who estimated probabilities best?
 
-One thing on the side, which contradicts bookmaking orthodoxy: the opening line beat the closing one. Log loss 0.578 against 0.622 across the 13 shared matches. Somewhere in the last hours before each start the market moved, and it moved wrong. On 13 matches that's almost certainly noise. I'm writing it down anyway, because this is exactly the shape of number that beautiful conclusions get built on.
+Let me start with this: picking the winner isn't enough to make a good bet. At decimal odds of 2.0, you need to win more than half the time to turn a profit. At 1.5, more than two-thirds. So “this team is more likely to win” doesn't get you very far unless you know how much more likely.
 
-Also worth keeping: the most confident correct call of the tournament and the most confident miss both belong to hy3, on the same team. It gave TEAM VISION 0.88 against BoomBoys and that landed. It gave TEAM VISION 0.78 in the grand final and that didn't. Six days apart.
+minimax-3 is a good example. Across all four configurations, on the shared set of 52 tasks available for every model, it picked the winner correctly in 35 answers, more often than any other model. Yet it ranked ninth for probability quality.
 
-<Collapsible summary="reference grid: Brier for all 12 models × 4 modes">
+I measured that quality using the Brier score: take the predicted win probability, subtract the actual outcome (1 for a win, 0 for a loss), square the difference, then average. Lower is better. If a team loses, a 70% forecast gets an error of 0.49, while a 51% forecast gets about 0.26. Both picked the wrong winner, but the first overestimated its chances by more.
 
-<p class="note">Why you should not trust the differences between these rows is the subject of a later section. Models alphabetically, modes as in the table above.</p>
+Always saying “50–50” gives a Brier score of 0.25. The early saved bookmaker line scored 0.1964.
 
-| model | fixed blind | fixed + prices | agent blind | agent + prices | overall |
-|---|---:|---:|---:|---:|---:|
-| deepseek-v4-flash | 0.224 | 0.230 | 0.262 | 0.198 | 0.229 |
-| deepseek-v4-pro | 0.212 | 0.199 | 0.246 | 0.209 | 0.217 |
-| gemini-3.7-flash | 0.214 | 0.215 | 0.243 | 0.218 | 0.223 |
-| glm-5.3 | 0.210 | 0.217 | 0.255 | 0.213 | 0.224 |
-| gpt-5.6-luna | 0.221 | 0.207 | 0.255 | 0.217 | 0.224 |
-| gpt-5.6-sol | 0.229 | 0.213 | 0.262 | 0.216 | 0.230 |
-| gpt-5.6-terra | 0.219 | 0.215 | 0.262 | 0.219 | 0.228 |
-| grok-4.6 | 0.228 | 0.223 | 0.250 | 0.203 | 0.226 |
-| hy3 | 0.217 | 0.205 | 0.263 | 0.220 | 0.227 |
-| kimi-k3 | 0.216 | 0.217 | 0.268 | 0.233 | 0.233 |
-| minimax-3 | 0.215 | 0.220 | 0.252 | 0.236 | 0.231 |
-| qwen3.8-max | 0.213 | 0.208 | 0.250 | 0.216 | 0.222 |
+<Leaderboard lang="en" />
 
-</Collapsible>
-
-## How the rig worked
-
-I called the lab MIDAS.
-
-I picked Dota because its playoff bracket comes with an external examiner attached. The bookmaker published a forecast before the event, put money behind it, and agrees to be scored. No benchmark does that.
-
-Every playoff series was forecast by 12 models, each in four modes. A mode is a combination of two independent axes.
-
-The first axis is where the model gets its data. In **fixed** mode I assembled the context in advance and froze it: Elo, form, head-to-head, drafts, rest, tournament metadata. Median 12,249 characters per match, byte-identical for every model. In **agent** mode the model went and got its own context with tools — OpenDota, Liquipedia, web search, page reads.
-
-The second axis is what the model knows about prices. In **price_blind** the prices weren't shown, and searching for or guessing them was forbidden in plain text. In **odds_aware** the prices sat in the context and the model had to state its own edge over the line.
-
-Two pipelines × two price modes = four runs per model per series: "fixed · blind", "fixed + prices", "agent · blind", "agent + prices". That's how they're labelled in every table below.
-
-And the rules, without which this turns into hindsight fortune-telling:
-
-- temperature 1.0 for every model, reasoning at the maximum each model offers in its API (for some the ceiling is lower — xhigh/high, which is their actual maximum);
-- the canonical forecast is the first successful run of a match × model × mode triple, registered before the series started; a rerun requires explicit invalidation with a reason;
-- Brier, log loss and accuracy are computed by arithmetic, not by a model;
-- every blind agent trajectory was checked after the run by a separate model for whether it had peeked at the odds — 5 runs were ruled contaminated and dropped;
-- all the raw material — prompts, answers, trajectories, price snapshots, judge verdicts — lives in SQLite, and the report rebuilds from the database with one command.
-
-667 pre-match forecasts out of 1,157 were scored. The rest are errors, reruns, live per-map forecasts (264 of them) and research digests. The market baseline is the first valid `pre_prediction` snapshot from each bookmaker with equal weights across available sources: 13 matches have both Fonbet and BetBoom, the rest a single source, and the mean margin of the selected lines is 4.9%. The median scored forecast was registered 4.8 hours before the series started, the earliest 11 hours. There were also two exceptions in the other direction, which I deal with honestly below in the engineering section.
-
-## Your leaderboard is noise
-
-The most useful thing the lab produced has nothing to do with Dota. It's about how we normally compare models. A "model A beats model B" table built on a few dozen examples is a random number generator with good typography.
-
-### Bootstrap the bracket
-
-Take the 14 matches, resample them with replacement 4,000 times, and look at who comes first each time. In fixed · blind the formal winner glm-5.3 (Brier 0.2104) stays on top in 23% of resamples.
+Each row is one model–configuration combination. Its Brier score uses all eligible forecasts, with equal weight for each answer. Series counts vary because of missing and excluded forecasts, so the table shows how many went into each score. Market comparisons use the same series as the corresponding combination.
 
 <HBars
-  title="How often each model comes first across bootstrap resamples (fixed · blind)"
-  note="The outlined bar is the actual table winner. In agent · blind it is worse still: the 'champion' gemini-3.7-flash wins only 11.4% of resamples, and a different model comes first more often than it does."
-  rows={enRows(bootstrapTop)}
+  title="Forecast quality: lower is better"
+  showTable={false}
+  showSource={false}
+  note="Brier score across 14 series. Each configuration averages individual model forecasts; the number on the right is the forecast count. The dashed line marks a constant 50% prediction."
+  rows={charts('en').brierModes}
+  domain={[0, 0.3]}
+  rule={{ at: 0.25, label: '50–50' }}
 />
 
-The healthiest mode is fixed + prices, where the leader holds first place in 43% of resamples. So even where the gap is visible to the naked eye, the odds that you're ranking models rather than luck are below one in two.
+None of the 48 model–configuration combinations beat the early line. Even the best scored 0.1983 against the market's 0.1964 on the same series. And that's with us picking the best result after the tournament, already knowing which configuration did well.
 
-The same bootstrap answers the main question strictly. The probability that the model consensus beats the market is 11.8%, and the 95% interval for the Brier difference "consensus minus market" runs from −0.020 to 0.067 with zero inside. The honest phrasing of my result, then: on 14 events I could not show the models are better, and the point estimate is against them.
+But the agent without odds interested me most. Its 0.2570 is worse than constant 50–50. So the model went looking for extra information, read things, spent tokens, and on average gave worse answers. What on earth did it find?
 
-### Repeat the same prompt
+## What the agents did on the web
 
-The second noise measurement came for free out of the database. It contains 21 groups where the same model ran more than once on the exact same context (matching `context_hash`) at temperature 1.0 — 47 runs in total. That's a clean measurement of a model's own noise on repeats. Groups where at least one run was at a different temperature (pipeline shakedown before the series) are excluded.
-
-<StatTiles
-  cols={4}
-  items={[
-    { value: '5.4 pp', label: 'mean spread', note: 'between repeats of one prompt' },
-    { value: '15 pp', label: 'maximum', note: 'same input, different answers' },
-    { value: '1/21', label: 'groups matched exactly', note: 'the rest returned different numbers' },
-    { value: '0.017', label: 'the pooled standings spread', note: 'best to worst model, Brier' },
-  ]}
-/>
-
-A single model's own noise — 5.4 pp of probability, 15 pp in the worst group — is the same order of magnitude as the distance between neighbours in the table. The full pooled spread, best to worst model, is 0.017 Brier.
-
-### The second decimal place
-
-Since we know how much noise is in a model, look at the precision it reports with. The 667 scored forecasts contain 2,762 stated numbers. <mark>89% of them are written with two or more decimal places</mark>: 0.28, 0.27, 0.26, 0.2384. Only 10.5% land on the round 0.1 grid, and exactly 0.50 shows up once in the entire tournament.
-
-So the model reports a probability at a resolution of one percentage point while its own spread across repeats is five. The second decimal is typography. It looks like the output of a calculation and there's nothing behind it, and it's the digit every side-by-side model table rests on.
-
-<Takeaway label="What to take away">
-
-Before comparing models, measure the spread of one model across repeated runs of the same prompt. If the difference between your candidates is smaller than that spread, you're comparing seeds. It costs N extra runs and saves you from a whole class of confidently wrong decisions.
-
-</Takeaway>
-
-## The internet made all twelve worse
-
-The only mode in the lab that lost to a coin flip is the agent with web search and no odds: Brier 0.2557 against 0.2500 for "always 0.5". That isn't one unlucky model either. <mark>All 12 out of 12 got worse.</mark> I expected the internet to be worth at least zero and got a minus across the entire board.
+Without odds, gathering information independently made all twelve models' forecasts worse by log loss. That's another probability metric, one that penalizes confident mistakes more heavily. I kept the same series in each paired comparison.
 
 <Dumbbell
-  title="log loss: frozen context → same prompt, but with the internet"
-  note="On the right is the delta. Mean degradation +0.085 log loss, 12 of 12 worse. Handing the agent the internet shifts its probability by 8.8 pp on average without improving it."
-  aLabel="fixed (frozen)"
-  bLabel="agent (with search)"
-  rows={enRows(webDeltas)}
+  title="Independent research made all 12 models less accurate"
+  showSource={false}
+  note="Log loss: lower is better. Both configurations are blind to odds; each model is compared on the same series. The number on the right is the increase in error."
+  rows={charts('en').webDeltas}
+  aLabel="Fixed context"
+  bLabel="Agent"
+  lang="en"
 />
 
-Where does it move the estimate? I computed the optimal temperature-scaling coefficient — how much the probabilities have to be squeezed towards 0.5 to minimise log loss.
+Tools did noticeably change the answers: the average probability shift between fixed context and the agent was about 8.8 percentage points. The median agent run took just over two minutes; the longest, almost fourteen.
 
-<HBars
-  title="Optimal k in p′ = σ(k·logit p)"
-  note="k < 1 means the model is overconfident and its probabilities should be compressed towards 0.5. k > 1 means underconfident, they should be stretched. The blind agent is the only mode to the left of one."
-  rows={enRows(kScale)}
-  rule={{ at: 1, label: 'k=1 (change nothing)' }}
-/>
+Search used Firecrawl. Its results contained 7,716 links, of which 2,243 pointed to YouTube. Almost 29%. These were links in search results; they don't establish that agents watched the videos. In 153 of 1,184 calls, Liquipedia returned a redirect such as `#REDIRECT [[1w Team]]`. The tool call succeeded, but instead of team data, it delivered instructions to go to another page.
 
-The blind agent needs its probabilities squeezed threefold (k = 0.32). Every other mode is underconfident and needs stretching. What the internet handed the agent was confidence.
+One Iron Wing press release was read thirteen times across different runs. There were 220 page-reading requests for 126 distinct pages. That rather calls for a shared cache. Endless loops were rare, though: exact repeats within a single run accounted for just 39 of all 8,012 calls.
 
-<Reliability
-  xLabel="stated probability"
-  yLabel="realized"
-  tip={(claimed, actual, n) => `stated ${claimed}% · realized ${actual}% · ${n} forecasts`}
-  title="Reliability curve: all 667 scored forecasts, all modes pooled"
-  note="The diagonal is perfect calibration. Dot size is the number of forecasts in the bucket (1 to 186); the figure next to each dot is the realized share."
-  buckets={reliability}
-/>
+It also turned out that forbidding searches for odds doesn't guarantee they won't end up in the context. kimi-k3, for example, received a Kalshi price right in the search preview of an ordinary article: the favorite was trading at 52 cents. To check for contamination in agent runs without odds, deepseek-v4-flash acted as an LLM judge, inspecting trajectories for odds that had entered the context. Contaminated runs were excluded according to the latest audit decision. The audit could be wrong too: I reversed two of its decisions after checking them manually.
 
-The picture is familiar. The middle of the scale is calibrated almost perfectly — a stated 55% happens 55% of the time, a stated 74% happens 74%. At the edges the models undershoot: a stated 26% happens only 6% of the time, 36% happens 13%, 64% happens 40%. The only bucket above the diagonal is 83% → 100%.
+These findings don't explain the whole decline on their own. The fixed context had already been assembled for the task, while agents had to find useful information among whatever the tools returned. The prompts differed too. But after this, I'm much less inclined to treat the number of tool calls as a measure of research depth.
 
-Two causes read straight off the chart. One is the positional anchor, which gets its own section below: the first-named team won 6 series out of 14, and that pulls the probability up at almost every confidence level. The other is that extreme confidence pays off here and the models are too scared of extreme estimates. On top of that, 49% of all answers sit in the 0.4–0.6 corridor. They barely leave the coin flip, and when they do they undershoot. Hence the optimal k > 1 in nearly every mode.
+As soon as I showed the agents odds, all twelve models improved. That made me curious about what was actually improving: their understanding of Dota, or their agreement with the bookmaker?
 
-### What the agent actually read
+Across 162 pairs of answers from the same model on the same series, the average distance from the early line fell from 10.8 to 6.3 percentage points. In 116 of the 162 pairs, the answer with odds was closer to the market. That doesn't prove copying: the prompts contained prices available at run time, while I'm comparing with the early ones. But the observed effect is quite specific: once given odds, models disagreed with the line less and made smaller errors.
 
-<HBars
-  title="Top 10 domains in the agents' search results (7,716 results)"
-  note="YouTube is 29% of all results. Video descriptions instead of data. Below it are specialist aggregators, some of which trade odds themselves."
-  rows={enRows(domains)}
-/>
+I separately pulled out answers where a model without odds favored the opposite team to the market:
 
-Past the junk in the results, the trajectories hold a museum of engineering rakes I collected across the tournament:
+<div class="table-overflow" tabindex="0" role="region" aria-label="Model disagreements with the market">
 
-- 153 of 1,184 Liquipedia calls (13%) returned a redirect stub like `#REDIRECT [[1w Team]]`, so zero information. The tool reported success anyway;
-- of 220 page reads, 126 were unique. More than 43% of downloads are the same URL fetched again by a different agent. One Iron Wing press release was read 13 times;
-- inside a single trajectory agents almost never loop: 39 literally repeated calls out of 8,012. The duplication happens between agents, and a cache fixes that, not a prompt;
-- effort doesn't buy quality. The correlation between the number of tool calls in a scored agent run and its Brier is r = 0.003. Thirty search steps get you no closer to the right answer than five.
+<table data-midas-disagreements="true">
+  <thead><tr><th>Configuration without odds</th><th>Such answers</th><th>Model's favorite won</th><th>Series</th></tr></thead>
+  <tbody>{['fixed·price_blind', 'agent·price_blind'].map(cell => (
+    <tr>
+      <td>{cell === 'fixed·price_blind' ? 'Fixed context' : 'Agent'}</td>
+      <td>{deepDive.summary.disagreements[cell].opposite.n}</td>
+      <td>{deepDive.summary.disagreements[cell].opposite.model_correct}</td>
+      <td>{deepDive.summary.disagreements[cell].opposite.series}</td>
+    </tr>
+  ))}</tbody>
+</table>
 
-### The ban that leaked
+</div>
 
-The blind agent is forbidden in plain text from searching for or guessing odds, and the search layer strips bookmaker domains — over the tournament it removed 89 results. How did that work in practice?
+For the agent, 11 of those 49 answers were correct. On those same answers, the model's Brier score was 0.3175 versus the market's 0.2311. So this isn't just about crossing the arbitrary 50% threshold: the probabilities themselves were worse too. But these are 49 answers across just eight series, not 49 independent attempts to catch the bookmaker getting it wrong.
 
-Of 522 search queries issued by blind agents, 29 (5.6%) still contained "odds", "bet", "prediction" and the like. In odds-aware mode it's 30.3%. So the ban mostly works, and it still leaks: the block list caught neither Polymarket, nor Kalshi, nor "preview" articles with prices right in the headline.
+They did sometimes pick an underdog that won. I didn't see a systematic edge in those disagreements here.
 
-<Quote source="From the contamination auditor's verdict, kimi-k3 run, match 1">
+## How much the forecasts cost
 
-"The web_search at step [45] returned an article titled *Team Spirit Vs Iron Wing Dota 2 Odds: Kalshi Doubts Yatoro* from oddsshopper.com, and the agent's reasoning at step [46] quoted 'Kalshi makes Iron Wing a 52-cent favorite... makes Yatoro's Spirit the underdog.'"
+The overall $25.51 doesn't tell us much about the price of a good forecast: it includes retries, errors and answers between maps. So I calculated the cost of eligible answers separately for the top three combinations on the leaderboard. Each covered fourteen series.
 
-</Quote>
+<table class="compact-comparison" data-midas-cost="true">
+  <thead><tr><th>Model and configuration</th><th>Brier ↓</th><th>For 14 answers</th></tr></thead>
+  <tbody>{facts.insights.configuration_costs.configurations.slice(0, 3).map(row => (
+    <tr>
+      <td>{row.model}<br />{row.cell === 'fixed·odds_aware' ? 'Fixed context' : 'Agent'} · with odds</td>
+      <td>{fmt(row.brier, 'en', 4)}</td>
+      <td>${fmt(row.total, 'en', 3)}</td>
+    </tr>
+  ))}</tbody>
+</table>
 
-The audit ruled 5 runs contaminated, all in blind agent mode. One of them had no external prices at all. The model simply started speaking the language of betting — "handicap +1.5 maps", "cover the spread" — because its entire training memory of this kind of task is betting copy.
+<Collapsible summary="Costs for every model in every configuration">
 
-The auditor is an LLM too, so it has to be checked in turn. 9 runs went through a second audit and one verdict flipped from "contaminated" to "clean" on review. The last verdict counts, which is why the database holds 6 `contaminated` rows while 5 runs were excluded. That one-row difference is exactly the case where "just count it in SQL" hands you the wrong number.
-
-A domain block list is hygiene and not isolation. If a leak breaks your experiment you need a post-hoc audit of the trajectory by a separate model, with an explicit criterion and preserved evidence. Here it was the only thing that caught the real leaks, and it cost pennies next to the forecasts themselves.
-
-### Show it the odds instead
-
-The reverse ablation on the same agent: show it the prices. All 12 of 12 improved, mean delta −0.085 log loss. One short numeric anchor from the market beat 8,012 tool calls and the entire internet.
-
-The models aren't just copying the line, either. The mean distance between forecast and market probability falls from 0.099 to 0.075, so they move about a quarter of the way towards the price.
-
-## Twelve models, one opinion
-
-Twelve models from nine different providers look like a perfect ensemble. Then you compute the pairwise correlation of their probabilities: <mark>0.94</mark>, ranging from 0.84 to 0.99. Against the market it's markedly lower, 0.65–0.75. They agree with each other far more than they agree with the opinion that gets checked by money.
-
-<LineChart
-  title="What adding models to the ensemble buys you"
-  note="Random subsets, up to 400 draws per size. One model is 0.2183, all twelve are 0.2169. The entire 'wisdom of the crowd' is 0.6% of the error, and it is exhausted by the second model."
-  series={[{ name: 'mean ensemble Brier', values: ensembleValues }]}
-  xLabels={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']}
-  yTicks={enRows(ensembleTicks)}
-  yDomain={[0.2146, 0.2206]}
-  yLabel="Brier"
-  xLabel="models in the ensemble"
-/>
-
-Small details of the same kind. Over the tournament, 16 times two different models produced a byte-identical score distribution. In 157 groups the probabilities matched to two decimal places. Even the agents behave identically: 397 of 466 trajectories, 85%, open with the same first call, `team_recent_series`.
-
-Diversifying across vendors doesn't diversify opinions while the context is shared. If you're building an LLM ensemble for robustness, vary the data and the prompt. Buying twelve logos gets you N inferences and one opinion.
-
-## 514 bets
-
-In odds-aware mode the model didn't just estimate a probability. It picked items off the menu and staked virtual money: 514 canonical bets, mean odds 2.68, 36.4% of them landing, **ROI −28.8%**.
-
-<HBars
-  title="ROI by segment (flat stakes)"
-  note="Solid bars are losses, outlined ones gains. Three segments went zero for the tournament: favourite −1.5 (114 bets), anything priced above 3.50 (94 bets) and −2.5 (11 bets). The only confident plus is the underdog handicap."
-  rows={enRows(roiSegments)}
-  rule={{ at: 0, label: '0' }}
-/>
-
-The shape of the curve is classic tail overpricing. The models made money where there's almost nothing to make — odds up to 1.50, 80% hit rate — and burned everywhere the price hinted at courage.
-
-### The money leaderboard
-
-The same roster, in money. Bets are virtual, stakes are flat, ROI is computed from the judge's settlement.
-
-<HBars
-  title="ROI by model — a minus for all twelve"
-  note="The outlined bar is the whole portfolio, the muted one the naive EV bot with no reasoning. The spread between the best and worst model (16.7 pp) is larger than the gap between the entire roster and the calculator (2 pp)."
-  rows={enRows(moneyBoard)}
-  rule={{ at: 0, label: '0' }}
-/>
-
-The order here barely matches the order on the Brier board. qwen3.8-max lost the least while sitting second on probabilities, and kimi-k3 closes both. The one thing that does match is the sign: twelve models, twelve minuses, with the "EV bot" bar lying right in the middle of the roster.
-
-### Stated edge is an anti-signal
-
-In odds_aware mode the model has to state its edge over the line. Mean stated edge across all bets: +16.7%. Realized: −28.8%. And the relationship is monotone in reverse:
-
-<HBars
-  title="ROI by the size of the edge the model claimed for itself"
-  note="The louder the promised edge, the worse the outcome. What a stated edge measures is distance from the market."
-  rows={enRows(roiEdge)}
-  rule={{ at: 0, label: '0' }}
-/>
-
-### CLV lied too
-
-Closing line value is the sacred cow of sports analytics: take a price systematically better than the closing one and you're profitable in the long run. A comparable closing price was available for 466 bets. Mean CLV is +2.85% and the line was beaten 59.2% of the time, which by the textbook is the profile of a winning bettor. Actual ROI: −28.8%.
-
-Over the whole tournament the line genuinely moved exactly once. In Team Liquid — Team Falcons the price on Liquid at Fonbet drifted from 1.85 to 3.20, up 73%. The smart money moved to Falcons. Liquid won the series.
-
-### Control group: reasoning versus a calculator
-
-Alongside the models, on the same prices, I ran a naive EV bot — pure arithmetic on top of a no-vig consensus, zero reasoning. It returned −30.8% ROI on 226 bets against −28.8% for the models. Twelve LLMs, 8,012 tool calls and $25.51 produced roughly what six lines of arithmetic did.
-
-## The ±1.5 handicap broke everyone
-
-Here's a finding I wasn't looking for. Three independent threads of the lab converge on a single menu cell, `±1.5 maps handicap`. That's where forecasters, bettor and judge all broke, separately, in the same way.
-
-Start here: in every forecast the model answers the same question twice. One JSON contains both the score distribution (`2:0`, `2:1`, `1:2`, `0:2`) and the probabilities of the menu items. From the distribution, the probability of any item follows by one line of arithmetic. So the two numbers can simply be compared.
-
-<HBars
-  title="Disagreement between a model's two answers in the same response, pp"
-  note="Mean absolute difference between the stated probability of a handicap item and the one implied by the model's own score distribution. The outlined bar is the same measurement on the match-winner market."
-  rows={enRows(headGap)}
-/>
-
-The picture splits by market, and the split is absolute:
-
-- **match winner** — a gap of 0.4 pp. The two heads say the same thing, error at rounding level.
-- **±1.5 handicap** — 8.1 pp on average, and <mark>in 30.6% of cases the two numbers differ by more than 10 pp</mark>. The record holder is grok-4.6: 0.05 in prose against 0.95 in its own distribution. The event, naturally, happened.
-
-<Quote source="gpt-5.6-luna, forecast for TEAM VISION — Team Yandex">
-
-"Team Yandex +1.5 wins in every outcome except a TEAM VISION 2:0, giving it 0.57 probability versus 0.513 implied at 1.95."
-
-</Quote>
-
-The same model's own distribution, in the same response, gave that event 0.94. The sentence "wins in every outcome except a 2:0" is correct. The number next to it came from somewhere else.
-
-Which of the two is right? Scoring both versions against what happened:
-
-| answer to "does the handicap cover" | Brier | accuracy |
-|---|---:|---:|
-| stated by the model in words | 0.1786 | 77.8% |
-| computed from its own distribution | **0.1556** | **80.6%** |
-
-Arithmetic on top of the model comfortably beats the model on the same question. Ask for a derived quantity directly and you trade a calculation for a paraphrase.
-
-### Bets against its own arithmetic
-
-The bets, of course, were placed on the stated number. I checked each one for positive expected value under the model's **own** distribution. For 39 of 514, there was none. The model put money on an outcome that its own figures priced as a loser and explained in the rationale why it was good value.
-
-<Quote source="grok-4.6, a losing 'TEAM VISION −1.5' bet at 1.94">
-
-"Vision true prob of 2:1/2:0 exceeds implied 0.52."
-
-</Quote>
-
-A −1.5 handicap only covers on a 2:0. A 2:1 doesn't close it. The model's own distribution gave 2:0 exactly 0.28, half the price. It added two scores in its head, one of which doesn't belong to that menu item, and staked on the sum.
-
-31 of those 39 are handicaps again. And the final irony: those 39 "wrong" bets returned −1.4% ROI against −30.6% for the other 475. With 39 bets, nearly all on heavy favourites, that's an anecdote and not a conclusion — a telling one, though, because an arithmetic slip pulled the model closer to the market than its own calculation did.
-
-### The judge trips in the same place
-
-Metrics are computed by code, but settling a bet is a text task: match the menu item ("handicap team2 +1.5") against the actual series score and decide whether it landed. An LLM judge did that (deepseek-v4-flash), after which I reviewed its verdicts by hand.
-
-Of 820 reviewed verdicts, 5 were wrong — 99.4% accuracy, with a further 12 verdicts left unreviewed and excluded from the numbers. The interesting part is the shape of the error rather than the rate:
-
-- all 5 errors are in the same market, `handicap +1.5`;
-- all 5 in the same direction, lost→won, the judge crediting a win where there was a loss;
-- and it's exactly the menu item where the forecasters contradict themselves, the one with zero hits on the favourite handicap over 114 bets and the only positive segment on the underdog side.
-
-No mystery there. "A +1.5 handicap covers even if the team lost the series 1:2" is a sentence with a double negative and an implicit condition. The models break on it as readers, not as forecasters.
-
-<Takeaway label="What to take away">
-
-Don't ask a model for a quantity that can be computed from its own answer. Take the base distribution and derive the rest in code: here that's 0.023 Brier and 2.8 pp of accuracy for free, plus an entire class of bets-against-your-own-numbers disappears.
-
-And separately: the aggregate accuracy of an LLM judge is nearly useless as a metric. The errors concentrate in the semantically hard category, so review a slice by category rather than a random sample of verdicts.
-
-</Takeaway>
-
-## Longer answers, worse forecasts
-
-"Thinks longer, predicts better" was neither confirmed nor refuted. It split into two different facts.
-
-<Scatter
-  title="Across matches: the longer the models write about a series, the worse they predict it"
-  note="r = 0.43 across 14 matches. Within a single match the relationship vanishes: r = 0.004 — the length belongs to the match, not to the model."
-  points={enRows(lengthPoints)}
-  xTicks={enRows(lengthTicksX)}
-  yTicks={enRows(lengthTicksY)}
-  xDomain={[3500, 6900]}
-  yDomain={[0.01, 0.5]}
-  yLabel="match Brier"
-  xLabel="median output tokens per match"
-  trend={{ x1: 3500, y1: 0.127, x2: 6900, y2: 0.329 }}
-/>
-
-<Collapsible summary="match table">
-
-| match | series | score | median tokens | Brier |
-|---|---|---|---:|---:|
-| M2 | TEAM VISION — BoomBoys | 2:1 | 3,747 | 0.051 |
-| M5 | Team Spirit — TEAM VISION | 1:2 | 4,407 | 0.111 |
-| M7 | TEAM VISION — Team Yandex | 2:1 | 4,419 | 0.097 |
-| M10 | Nigma Galaxy — BoomBoys | 1:2 | 4,531 | 0.305 |
-| M1 | Iron Wing — Team Spirit | 0:2 | 4,974 | 0.241 |
-| M8 | Iron Wing — BoomBoys | 1:2 | 5,022 | 0.238 |
-| M12 | BoomBoys — Team Spirit | 0:2 | 5,057 | 0.148 |
-| M3 | Team Liquid — Team Yandex | 0:2 | 5,071 | 0.383 |
-| M11 | Team Spirit — Team Liquid | 2:0 | 5,426 | 0.218 |
-| M9 | Team Liquid — Team Falcons | 2:1 | 5,441 | 0.190 |
-| M4 | Nigma Galaxy — Team Falcons | 2:1 | 5,599 | 0.290 |
-| M14 | TEAM VISION — Team Spirit | 2:3 | 5,721 | 0.462 |
-| M13 | Team Yandex — Team Spirit | 0:2 | 6,498 | 0.221 |
-| M6 | Team Yandex — Nigma Galaxy | 2:1 | 6,627 | 0.212 |
+<ConfigurationCosts lang="en" />
 
 </Collapsible>
 
-A check from the other direction: for each model I split its own answers into a short half and a long half. In 10 of 12 models the long half is worse, on average 0.209 against 0.243 Brier.
+All fourteen answers from Flash as an agent with odds cost less than nine cents. Grok in the same configuration cost almost eight times as much and ranked slightly lower. The quality gap is small, and I've already picked the best results after the tournament, so I wouldn't turn this into a general ranking of value for money. But in this experiment, first place among LLMs didn't cost much.
 
-Verbosity here means the task is unsolvable and the model can feel it. Which gives you a free trick: <mark>the median answer length for a task is a ready-made flag for "this is a coin flip, don't act on it"</mark>. It works with no labels and no ground truth, on any stream of tasks.
+<p>The difference between configurations is noticeable too. Across {facts.insights.configuration_costs.paired_modes.price_blind.n} pairs with the same model and series, an agent without odds cost an average of {fmt(facts.insights.configuration_costs.paired_modes.price_blind.ratio, 'en', 2)} times as much as fixed context. Meanwhile, independent research made all twelve models' forecasts worse by log loss, as the chart above shows. The extra calls and tokens didn't pay off here.</p>
 
-## The biases they picked up from us
+These costs come from saved model-call logs. They exclude separate search charges, as well as the retries and failed attempts included in the overall $25.51.
 
-What follows is a set of biases I expected to find in people on a forum and found in twelve models at once. None of it is about Dota. It's about what the models absorbed from texts about Dota.
+## Did twelve opinions help at all?
 
-### A love of the clean sweep
-
-The most likely score according to the models is 2:0. It was the modal forecast in 212 cases out of 667, a third of all answers. Over the tournament the first-named team swept **once in fourteen**.
-
-<Dumbbell
-  title="Modal forecast against what actually happened, %"
-  note="On the left, the share of forecasts where the score was named most likely; on the right, the share of matches where it happened. The mean stated probability of a sweep is 48.7% against an actual 35.7%."
-  aLabel="named most likely"
-  bLabel="happened"
-  rows={enRows(sweepBias)}
-/>
-
-A sweep is a tidy outcome. It agrees with "one team is stronger than the other", which is what the model reads out of Elo, form and head-to-head. A long series requires accepting that a favourite can lose a map and still be a favourite, and that's probabilistic reasoning rather than narrative.
-
-### What "upset" actually does
-
-The word "upset" appears in 74 of 667 rationales. You'd think the model is warning you it sees a risk. Here's what it does next: <mark>in 89% of those forecasts it backs the market favourite anyway</mark>, more often than in the other 593 rationales, where it's 79%. Mean confidence in those forecasts is higher too, 0.673 against 0.608.
-
-Mentioning an upset insures the estimate without shifting it. It's the rhetorical figure "I considered the other side too", after which nothing changes. The risks paragraph in a bad investment memo works the same way.
-
-### What the model fills the gaps with
-
-<HBars
-  title="Forecast accuracy by the word used in the rationale"
-  note="Outlined bars are terms where the model is right more often than its base rate, solid ones where it is right less often. 'Momentum', 'experience', 'fatigue' are narrative filler, inserted when the numbers are empty. 'GPM', 'patch', 'elo' are things that sat in the context as ready-made numbers."
-  rows={enRows(vocab)}
-  rule={{ at: 0, label: 'base 63.4%' }}
-/>
-
-### The positional anchor
-
-In the context the teams always come as a pair, "team1 vs team2". The order is set by the tournament bracket and means nothing. Here's how often each mode backed the team named first.
-
-<HBars
-  title="Share of forecasts backing the team named first"
-  note="Reality: the first-named team won 6 series out of 14. The market held steady. The more freedom the model has, the more it believes whatever it read first."
-  rows={enRows(anchorRows)}
-  rule={{ at: 50, label: '50%' }}
-/>
-
-The +29 pp gap between the blind agent and reality is token order in the prompt.
-
-### Brands
-
-For each team I take the models' mean belief and compare it with the market price.
-
-<HBars
-  title="How much more the models believed a team than the market did"
-  note="Nigma Galaxy and Team Liquid — the most decorated brands in the bracket — got a visible premium over the market price from the models, and won one series in three each. Team Spirit, the eventual champion, got a discount."
-  rows={enRows(brands)}
-  rule={{ at: 0, label: '0' }}
-/>
-
-This is the exact set of errors a bookmaker mints its margin from on the public: faith in famous names, distrust of upstarts. What the models absorbed from their training texts is the media weight of the teams.
-
-### The champion nobody believed in
-
-Team Spirit played 6 series, won 5 and took the Aegis out of the lower bracket. Here's how much the models (fixed, blind) and the market believed in them:
+Back to Spirit. On the way to the title, it won five of its six series. Before the lower-bracket final against Yandex, the market gave it about 69%, while models on fixed context without odds averaged 47%. Only one of the twelve favored Spirit. Before the grand final, the market gave it 43%, the models 31%, and nobody was on Spirit's side anymore.
 
 <LineChart
-  title="Belief in the future champion through the playoffs"
-  note="The solid line is the mean probability of a Spirit win across the 12 blind fixed forecasts; the muted one is the market price without margin."
+  title="How they rated the eventual champion's chances"
+  showSource={false}
+  note="Team Spirit's win probability before each series. Models are the mean of 12 fixed-context forecasts without odds. Spirit won five of these six series; its only loss was the first VISION encounter shown here."
   series={[
-    { name: 'models', values: spiritModels },
-    { name: 'market', tone: 'muted', values: spiritMarket },
+    { name: 'Models', tone: 'ink', values: charts('en').spiritModels },
+    { name: 'Market', tone: 'muted', values: charts('en').spiritMarket },
   ]}
-  xLabels={enLabels(spiritStages)}
-  yTicks={enRows(spiritTicks)}
-  yDomain={[20, 75]}
-  yLabel="P(Spirit win)"
+  xLabels={charts('en').spiritStages}
+  yTicks={charts('en').spiritTicks}
+  yDomain={[0, 100]}
+  yLabel="Spirit win probability"
 />
 
-<Collapsible summary="series table">
+In the grand final, all twelve models in all four configurations favored VISION: those are the 48 forecasts from the start of the article. But Spirit won. In Liquid versus Yandex, all 48 forecasts also favored the team that eventually lost. The bookmaker favored the same team as the models in both matches. The models, though, gave that team an even higher win probability on average.
 
-| stage | opponent | score | result | believed | models | market |
-|---|---|---|---|---|---:|---:|
-| Upper Bracket Quarterfinals | Iron Wing | 0:2 | won | 12/12 | 62% | 49% |
-| Upper Bracket Semifinals | TEAM VISION | 1:2 | lost | 0/12 | 28% | 35% |
-| Lower Bracket Quarterfinals | Team Liquid | 2:0 | won | 5/12 | 49% | 59% |
-| Lower Bracket Semifinal | BoomBoys | 0:2 | won | 12/12 | 60% | 65% |
-| Lower Bracket Final | Team Yandex | 0:2 | won | 1/12 | 47% | 69% |
-| Grand Final | TEAM VISION | 2:3 | won | 0/12 | 31% | 43% |
+The explanations kept coming back to Elo, head-to-head results, form and fatigue from the lower-bracket run. When one model writes that, you take it as one assessment. When twelve different models say roughly the same thing, each in its own words, it starts to feel like the hypothesis has been fairly well checked. Yet they share the underlying data, and all those explanations may rest on the same mistaken assumption.
+
+With fixed context and no odds, the mean pairwise correlation between probabilities was 0.943. A high degree of similarity is expected in itself: they're looking at the same matches. The more useful check is what averaging buys you. The average forecast of all twelve models had a Brier score of 0.2169, compared with 0.2183 for the average individual model. An improvement of only about 0.6%.
+
+<p>I also tried blending that average forecast with the market's, 50/50. The result was {fmt(deepDive.summary.mixtures.find(row => row.model_weight === 0.5).brier, 'en', 4)}, versus {fmt(deepDive.summary.mixtures[0].brier, 'en', 4)} for the line alone. I also tried model weights of 25% and 75%; both blends were worse than the market. This is a check on fourteen series that have already been played, but even this simple approach didn't reveal anything useful to add to the price.</p>
+
+If one model overestimates a team's chances and another underestimates them, averaging can bring the forecast closer to reality. But if they all overrate the same team, the average keeps that error. On this tournament, averaging twelve answers brought only a small improvement, so I wouldn't treat their agreement as a reason to trust the forecast more.
+
+## Where the virtual money went
+
+In the configurations with odds, models selected 510 settled bets on 45 distinct market selections. They staked a total of 508 units and lost 143. **Return on total stake was −28.2%.** With an equal amount on every bet, it would have been −36.3%. No model finished in profit.
+
+<HBars
+  title="Virtual betting returns by model"
+  showTable={false}
+  showSource={false}
+  note="Profit / total recorded stake, combining both configurations with odds. The number beside ROI is the bet count. Different models frequently bet on the same outcome."
+  rows={charts('en').money}
+  domain={[-40, 0]}
+  rule={{ at: 0, label: '0%' }}
+/>
+
+Looking at that chart, it's easy to assume the models bet about equally badly throughout the tournament. So I broke the profit down by series, and found something much more interesting:
+
+<div class="table-overflow" tabindex="0" role="region" aria-label="Profit by series group">
+
+<table data-midas-profit="true">
+  <thead><tr><th>Series</th><th>Bets</th><th>Total stake</th><th>Profit</th></tr></thead>
+  <tbody>{['champion_wins', 'other_series'].map(key => (
+    <tr>
+      <td>{key === 'champion_wins' ? "Spirit's five wins" : 'The other nine series'}</td>
+      <td>{deepDive.summary.money[key].n}</td>
+      <td>{fmt(deepDive.summary.money[key].stake, 'en')}</td>
+      <td>{fmt(deepDive.summary.money[key].profit, 'en')}</td>
+    </tr>
+  ))}</tbody>
+</table>
+
+</div>
+
+The five series Spirit won accounted for −140.9 units out of the overall −143.0. The other nine combined came to just −2.1. Those totals already include winning bets, so it would be wrong to call the first row a “share of all losses.”
+
+What happened before the last two matches is particularly telling. All 39 model bets on Yandex versus Spirit lost, costing 38.05 units. In the grand final, they staked another 66.2 and lost 64.4. Yet Spirit had been the bookmaker's favorite against Yandex. It won, as the market expected, but the models had chosen bets that lost with that result.
+
+<p>We can't put it all down to the last match either: remove the grand final and the return is still {fmt(deepDive.summary.money.without_final.roi * 100, 'en')}%. Remove the unanimous miss on Liquid versus Yandex as well, and it's {fmt(deepDive.summary.money.without_unanimous_wrong.roi * 100, 'en')}%.</p>
+
+Of course, I singled Spirit out after the tournament, already knowing the champion. That doesn't give us a rule for the next TI. But it does make clear why the bet count is so misleading: a few shared errors were repeated over and over by different models in different configurations. 510 rows in a database look more substantial than the fourteen matches underneath them.
+
+There was a more basic problem too. Models chose the −1.5 handicap 112 times, and every one of those bets lost. Remove the duplicates and there are just ten distinct outcomes across ten series. In four, the chosen team actually won, 2–1. Picking the winner correctly turned out to be perfectly compatible with losing a bet on it. That handicap cost 86.3 units.
+
+Splitting bets at decimal odds of 2.0 is revealing too:
+
+<div class="table-overflow" tabindex="0" role="region" aria-label="Betting returns by odds">
+
+| Odds | Bets | Total stake | ROI |
+|---|---:|---:|---:|
+| Below 2.0 | 236 | 257.3 | +2.9% |
+| At least 2.0 | 274 | 250.7 | −60.0% |
+
+</div>
+
+About half the total stake went into each group. The first earned 7.5 units; the second lost 150.5. The higher-odds selections include handicaps on a favorite winning decisively, so this isn't just about betting on underdogs. And a “bet only below 2.0” rule would, for now, amount to picking a convenient cutoff after seeing the result.
+
+By the models' own estimates, the mean expected return on their chosen bets was about +16.3%. In other words, they thought they'd found fairly generous prices. It's just that calculating expected return requires knowing the probability of the event, and that's exactly where the trouble was.
+
+<Collapsible summary="What happened to bets in the configurations without odds">
+
+There, code selected bets after the model answered: it took the model's probability and the historical price, calculated `p × odds − 1`, and placed an equal stake whenever the result exceeded 0.06. That produced 226 bets with an ROI of −30.8%.
+
+This check still depends on the model's probabilities. Also, the two portfolios differ in selections and stake sizes, so the difference in ROI doesn't isolate the value of using an LLM to choose bets.
 
 </Collapsible>
 
-Two moments matter here. In the lower bracket final, where the market held Spirit as the favourite at 69%, 1 model out of 12 believed in them. In the grand final, zero out of 12.
+### Did choosing stake sizes help?
 
-<Quote source="hy3, the most confident mistake of the tournament (p = 0.78)">
+Models chose stake sizes only in the two configurations with odds: fixed context and independent research. They could stake between 0.5 and 2 units. So here I'm comparing only bets from those two configurations: I kept the same selections at the same odds and recalculated the result with an equal stake on each.
 
-"TEAM VISION is undefeated at TI 2026 and defeated Team Spirit twice in upper bracket (2-0 and 2-1)… Likely Vision wins series ~0.78, with 3-1 most probable; **Spirit's best chance is a 3-2 upset**."
+<p>Equal stakes produced a return of {fmt(facts.bets.flat_roi * 100, 'en')}%, compared with {fmt(facts.bets.seg.all.roi * 100, 'en')}% for the model-chosen amounts. All {facts.insights.stake_sizing.improved_models} models improved when compared against their own set of bets. Below are the results for every model, combining both configurations with odds, just as in the returns chart:</p>
 
-</Quote>
+<table class="compact-comparison" data-midas-stakes="true">
+  <thead><tr><th>Model</th><th>Equal stakes</th><th>Model-chosen stakes</th></tr></thead>
+  <tbody>{facts.insights.stake_sizing.models.map(row => (
+    <tr>
+      <td>{row.model}</td>
+      <td>{fmt(row.flat_roi * 100, 'en')}%</td>
+      <td>{fmt(row.weighted_roi * 100, 'en')}%</td>
+    </tr>
+  ))}</tbody>
+</table>
 
-Spirit won exactly 3:2. The model described the mechanism of its own failure word for word and bet against it anyway. You can see the mechanics right in the rationales: "undefeated", "H2H 2:0" and Elo all get quoted, and all three are facts about the past. Spirit's three straight wins going into the final sat in the context as the string "5–3 record" rather than as a signal. <mark>LLMs read history beautifully and barely see momentum.</mark>
+So allocating money between the chosen bets reduced the losses. It wasn't enough to turn a profit, but putting an equal amount on each outcome would have made for an even sadder result.
 
-The worst matches of the tournament are the ones where everybody was wrong: Team Liquid — Team Yandex, 0 correct forecasts out of 48, and the grand final, 0 out of 47.
+I wouldn't call this proven risk-management ability yet. Models put less money on outcomes with odds of 2.0 or higher on average, and that's where most of the losses were. They also often chose the same outcomes, so they could all have benefited from reducing stakes on the same bad bets. I'd be interested in repeating this comparison at the next tournament.
 
-### Ten of them named the right score
+## The explanations looked better
 
-hy3 isn't alone in this. Of the 47 grand-final forecasts, <mark>10 name a 3:2 scoreline in plain text as a realistic scenario, and all 10 back VISION</mark>. The series finished 3:2 in favour of Spirit.
+After the final, I searched the other answers for `upset`. It appeared in 71 explanations. In 63 of them, the model still favored the market's pick. So models were quite happy to allow for an unexpected win in the text, without changing their main assessment.
 
-They didn't fail to see the upset. They articulated it, named the correct score and put money on the opposite outcome.
+`Momentum` was more amusing. It appeared in 84 explanations; the winner was picked correctly in 52.4% of those, versus 64.8% without it. I could have banned models from writing about momentum and congratulated myself on the improved prompt, but first I checked which matches they were describing that way.
 
-## Between maps
+Imagine one model uses `momentum` often and makes worse forecasts overall, while another rarely uses it and gets things right more often. Mix their answers together, and `momentum` will seem to be associated with errors. Though we may simply have picked up a difference between the two models. The same thing can happen if a word appears more often in forecasts for difficult matches, or in a configuration that performs worse overall.
 
-Between maps of a series the lab asked a separate question: who takes the next map? 264 forecasts, Brier 0.2550, accuracy 54.5%, worse than a coin flip, while the same models were hitting 55–70% pre-match.
+So I checked whether the association between a word and the error remained after adjusting for which model answered, which match it predicted and which configuration it used. For `momentum`, the correlation fell from +0.103 to +0.031, close to zero. For `experience`, the sign flipped from +0.084 to −0.056, while the association between mentioning Elo and making smaller errors almost disappeared. The original numbers largely reflected differences between models, matches and configurations. The presence of a word turned out to be a much less useful clue to forecast quality.
 
-The cause is in the data. A team that won a map took the next one only 36% of the time, 9 transitions out of 25. This playoff played anti-momentum, and coming back after a lost map was the norm.
+So I didn't end up with a dictionary of bad forecasts. But I do think it's worth reconsidering the habit of trusting percentages because the right analytical words surround them. Mentioning the risk of an upset is fairly easy; getting its probability right is harder.
 
-The models priced in inertia. After a lost map, 12 of 12 dropped a team's probability; after a won map, 8 raised it. There are few transitions (25), and the anti-momentum itself may well be noise. What isn't noise is that all 12 models confidently assumed the same hypothesis and never once considered the opposite.
+<Collapsible summary="Words, correlations and how they were calculated">
 
-Splitting by map number shows where the inertia lives. On map two, right after the first observed result, accuracy is 46% across 144 forecasts; on map three it's 71%. And the most telling map of the tournament is the fifth, the decider in the grand final: at 2:2 all 12 models gave the next map to VISION with probabilities of 55–64%. Spirit took it, and the title. All twelve were wrong, in unison.
+<WordTable lang="en" />
 
-## The engineering underside
+I used the visible `reasoning` field from 666 eligible answers, excluding hidden reasoning tokens and search trajectories. I checked 19 words or word groups; for example, draft includes drafts and drafting. The search ignores case and respects word boundaries: `form` inside `performance` doesn't count.
 
-The part people leave out of posts about "LLMs predicted X", even though it's the part that eats the time.
+For the calculation, each answer gets two numbers: 1 if the word appears and 0 if it doesn't; the second number is the Brier error. The “Before adjustment” column shows the association between them. For “After adjustment,” the script first removes average differences related to the match, model and configuration from both measures, then calculates the association between the remaining deviations. This checks whether the word tells us anything about the error beyond what those three factors already explain. The public-data script independently verifies the calculation using a different method.
 
-### More expensive does not mean smarter
+</Collapsible>
 
-<Scatter
-  title="Price of a forecast against its quality"
-  note="Correlation between cost and Brier: r = 0.17 — that is, none. kimi-k3 ate $7.95 (31% of the entire budget) and posted the worst Brier of the roster; hy3 cost $0.29 and landed mid-table."
-  points={enRows(costPoints)}
-  xTicks={enRows(costTicksX)}
-  yTicks={enRows(costTicksY)}
-  xDomain={[0, 15.3]}
-  yDomain={[0.215, 0.235]}
-  yLabel="model Brier"
-  xLabel="cents per scored forecast"
-  trend={{ x1: 0, y1: 0.2256, x2: 15.3, y2: 0.2278 }}
-/>
+## What about Astra?
 
-### Where the $25.51 went
+After the tournament, I ran gpt-6-astra on the same fourteen series: fixed context, with and without odds, `reasoning=max`, temperature `1.0`. 28 answers in total.
 
-- Prompt caching saved more than half the input: 57.4% of input tokens came from cache (21,391,775 of 37,284,930). A frozen context across 12 models is the ideal candidate — one prefix, many readers.
-- $2.06 (8.1%) burned in failed runs, where the model spent tokens and then crashed. That's the normal price of retries, but you have to know it and count it separately or the budget won't add up.
-- Agent modes cost roughly 2.6× their fixed counterparts and, as established above, were worse. Slower too: the median agent run took 2.3 minutes of continuous work, the record 13.7 minutes.
+I took the saved contexts from the original gpt-5.6-sol runs and reconstructed the odds for the same cutoffs using the original price-selection rule. The script checks hashes and snapshots. That makes Sol a useful direct comparison here:
 
-### What breaks in production
+<div class="table-overflow" tabindex="0" role="region" aria-label="Astra, Sol and market comparison">
 
-- Of 1,206 runs, 149 failed. Causes among those that had recorded a forecast: api — 129, timeout — 13, parse — 3; another 4 died before they could create one. Retries pulled almost everything through: 87.6% of match × model × mode triples got a result on the first attempt, and the record is a forecast that arrived on the 10th.
-- 11.0% of structured responses (82 of 748) had to be normalized because the probability distribution didn't sum to one. In most cases the discrepancy is microscopic, but for grok-4.6 it reached 15 pp. A `zod` schema catches the type and not the arithmetic, so a sum validator is mandatory.
-- The same model is the only one whose coherence drifted: the probability stated in a bet diverged from its own score distribution by 4.2 pp on average and 20 pp at the peak. For the other 11 it's effectively zero, 0.05 pp on average and 1 pp at the peak.
-- 33 of 671 odds snapshots failed to capture. Classic integration fare: protobuf websocket timeouts, a geo-blocked CDN at the second bookmaker, localized team names ("Iron Wing" → "Айрон", "1W Team") that stop the auto-matcher from finding the event and force a manual binding.
-- In 5 matches of 14 the canonical fixed runs received more than one version of the context, because the context was being rebuilt while runs were in flight. That's an honest limitation of the experiment: strict "byte-identical for every model" doesn't hold everywhere.
-- Two scored forecasts (Nigma Galaxy — BoomBoys, agent + prices) were recorded 30 and 60 minutes after the series actually started. The "after start" flag in the agent pipeline was set only from the live tracker's start time, which wasn't yet in the database; the fixed pipeline has a fallback to the schedule. Both forecasts are near coin flips (p = 0.45 and 0.53, one correct) and don't move the numbers. But the formal "everything before the start" is violated in 2 cases out of 667.
+<table>
+  <thead><tr><th>Configuration</th><th>Astra Brier ↓</th><th>Sol Brier ↓</th><th>Early market ↓</th></tr></thead>
+  <tbody>{['price_blind', 'odds_aware'].map(variant => (
+    <tr>
+      <td>{variant === 'price_blind' ? 'Without odds' : 'With odds'}</td>
+      <td>{fmt(facts.replay.summary[variant].brier, 'en', 4)}</td>
+      <td>{fmt(facts.replay.summary[variant].reference.brier, 'en', 4)}</td>
+      <td>{fmt(facts.replay.summary[variant].market.brier, 'en', 4)}</td>
+    </tr>
+  ))}</tbody>
+</table>
 
-## The checklist
+</div>
 
-Strip the Dota and the betting off this story and what's left is a list of rules I now apply to any LLM comparison.
+Without odds, Astra narrowly beat Sol; with odds, it did worse. The market was more accurate than either configuration. In the grand final, Astra gave VISION 69% both times, leaving Spirit 31%. The new model repeated the same pattern of underestimating the eventual champion.
 
-1. **Find an external examiner.** Somebody else's forecast with a price on being wrong: a market, a production metric, an expert decision. Any benchmark you control is a benchmark you can overfit, and then you're measuring how much models agree with each other.
-2. **Measure your own noise first.** Repeat the same prompt N times. A difference between candidates smaller than that spread isn't a result.
-3. **Bootstrap the leaderboard.** If the winner stays the winner in 23% of resamples, you don't have a winner.
-4. **Compute ablations pairwise.** "12 of 12 got worse" is a conclusion. "Mean Brier fell by 0.03" isn't.
-5. **Check calibration separately from accuracy.** The optimal k tells you instantly whether a mode is over- or underconfident, and costs one line of code.
-6. **Don't ask a model for anything computable from its own answer.** Take the base distribution and derive the rest in code.
-7. **Ensemble correlation matters more than ensemble size.** Measure pairwise correlation before paying for N models.
-8. **Gave an agent a tool? Count what it did with it.** Log every call and result: empty-response rates, duplicates, domains. "The agent searched the web" is not a description of behaviour.
-9. **Verify prompt bans by post-hoc audit.** A separate model, an explicit criterion, preserved evidence. Faith doesn't scale.
-10. **For an LLM judge, measure accuracy by category.** The errors concentrate in the semantically hard ones and the average hides them.
-11. **Answer length is a free difficulty signal.** Log it always.
-12. **Budget per scored result, not per experiment.** That number includes retries, burned runs and whatever the audit throws out. Here the two differ by 8%.
+<p>Astra's return on virtual bets was {fmt(facts.replay.summary.price_blind.roiWeighted * 100, 'en')}% without odds in the prompt and {fmt(facts.replay.summary.odds_aware.roiWeighted * 100, 'en')}% with odds. Code selected the bets in the first case; the model selected them in the second.</p>
 
-## Where that leaves it
+But Astra answered after the tournament, and the results could have been in its training data. So even with the same saved context, there's no guarantee it was estimating chances without knowing the match outcomes. Comparing it with models that answered before the matches may not be entirely fair. I'm keeping this run as a separate retrospective check and leaving it out of the main leaderboard.
 
-Market 1 : 0 models. Nobody beat the line, and the optimal share of LLM in a blend with the market is zero. Behind that score are the things that made the $25.51 worth spending — a leaderboard that turns over under resampling, an internet connection that cost every model accuracy, twelve vendors selling one opinion, and a model that answers itself with two different numbers on the same event.
+## How stable is first place?
 
-If I ran this again I'd drop agent mode entirely and spend the tokens on repeats of the frozen-context runs instead. Agent mode cost 2.6× and lost to a coin flip, while the own-noise measurement — the most useful number in the whole project — rests on 21 accidental groups because I never planned for repeats. Unless your task genuinely needs data the model can't be handed up front, the search loop is buying you confidence and nothing else.
+<p>The main leaderboard was won by deepseek-v4-flash as an agent with odds: Brier {fmt(facts.insights.configurations[0].brier, 'en', 4)}. Next came deepseek-v4-pro on fixed context with odds: {fmt(facts.insights.configurations[1].brier, 'en', 4)}. The gap is just {fmt(facts.insights.configurations[1].brier - facts.insights.configurations[0].brier, 'en', 4)}. I wanted to understand how much that order depended on the particular matches.</p>
 
-One more thing, about the name. MIDAS is a Dota item that returns extra gold from a creep. The Midas of the myth turned everything he touched to gold and starved, because the food turned too. The lab finished the tournament at −28.8% ROI. I picked the name before I had the results.
+To do that, I removed one series at a time and rebuilt the ranking of all 48 model–configuration combinations. First I calculated it without the first match, then restored the first and removed the second, and so on through all fourteen. The saved forecasts and results stayed unchanged. Each time, I excluded every answer about one match and calculated Brier on each combination's remaining eligible answers, just as in the table above.
 
-### Caveats
+<ConfigurationStability lang="en" />
 
-- n = 14 series. Any difference between individual models is noise; a difference between modes is a hypothesis. Every conclusion is "on this sample".
-- The bets are virtual. The goal was to measure the quality of probabilities, not to make money.
-- In 5 matches the fixed runs saw different versions of the context, so no causal conclusions about "data freshness" can be drawn here.
-- Metrics are deterministic given a fixed database state; service counters (jobs, snapshots) keep moving in the working database.
+<p>Flash as an agent with odds kept first place in only {facts.insights.configuration_stability.summary.find(row => row.model === 'deepseek-v4-flash' && row.cell === 'agent·odds_aware').first_count} of {facts.insights.configuration_stability.trials_count} checks. In the others, Pro on fixed context or Grok as an agent took the lead, both with odds. Removing a single match was enough to change the winner. The combinations still have slightly different sets of answers: this check doesn't restore missing forecasts.</p>
 
-### How to check this
+These numbers show how much the ranking depends on the set of matches already played. Pro finishing first seven times doesn't mean it has a 50% chance of being the best at the next tournament. To test that, we need new matches and forecasts made before they start.
 
-The scripts that built the report sit next to it:
+In the next experiment, I'd use plenty of models again and test each in every configuration. Models keep improving, and I'd implement the configurations differently too, given what I've learned here. So I see the current ranking as the result of a particular experiment, rather than a shortlist for the next one. Flash was the best model here, and the early bookmaker line was more accurate than Flash. What happens with new models and reworked configurations remains to be tested.
 
-- `lab.py` — database access and the rules of "canon" (which runs are scored);
-- `analyze.py` — every computation, dumps `facts.json` (18 sections, 156 KB);
-- `build.py` — the report itself: computed results come from `facts.json`, while editorial and design constants stay in the template;
-- `verify.py` — re-checks selected key values with separate SQL queries. This is what caught that the naive count of contaminated runs is one too many;
-- `validate_palette.py` — light/dark palette contrast check.
-
-Full run:
-
-```sh
-python3 longread/analyze.py && python3 longread/verify.py \
-  && python3 longread/validate_palette.py && python3 longread/build.py
-```
-
----
-
-<p class="note">Data: the lab's SQLite database — 1,157 forecasts, 20,909 agent events, 671 odds snapshots, 2,338 background jobs. Tournament: The International 2026, playoffs, 20–23 August 2026. Champion: Team Spirit. Bets are virtual; the project is research.</p>
+I think I got the name Midas right. The mythical Midas nearly starved because even his food turned to gold. If I'd tried to make a living off LLM forecasts, I wouldn't have needed a golden touch to end up in the same place.
