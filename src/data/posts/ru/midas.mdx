@@ -91,6 +91,7 @@ hy3, например, оценила шансы Team Vision в 78%. В объя
   showSource={false}
   note="Brier score по 14 сериям. Для режимов усреднены отдельные прогнозы моделей; число справа — количество прогнозов. Пунктир — постоянные 50%."
   rows={charts('ru').brierModes}
+  spacious={true}
   domain={[0, 0.3]}
   rule={{ at: 0.25, label: '50 на 50' }}
 />
@@ -136,9 +137,9 @@ hy3, например, оценила шансы Team Vision в 78%. В объя
   <tbody>{['fixed·price_blind', 'agent·price_blind'].map(cell => (
     <tr>
       <td>{cell === 'fixed·price_blind' ? 'Готовый контекст' : 'Агент'}</td>
-      <td>{deepDive.summary.disagreements[cell].opposite.n}</td>
-      <td>{deepDive.summary.disagreements[cell].opposite.model_correct}</td>
-      <td>{deepDive.summary.disagreements[cell].opposite.series}</td>
+      <td class="numeric">{deepDive.summary.disagreements[cell].opposite.n}</td>
+      <td class="numeric">{deepDive.summary.disagreements[cell].opposite.model_correct}</td>
+      <td class="numeric">{deepDive.summary.disagreements[cell].opposite.series}</td>
     </tr>
   ))}</tbody>
 </table>
@@ -157,9 +158,9 @@ hy3, например, оценила шансы Team Vision в 78%. В объя
   <thead><tr><th>Модель и режим</th><th>Brier ↓</th><th>За 14 ответов</th></tr></thead>
   <tbody>{facts.insights.configuration_costs.configurations.slice(0, 3).map(row => (
     <tr>
-      <td>{row.model}<br />{row.cell === 'fixed·odds_aware' ? 'Готовый контекст' : 'Агент'} · с коэффициентами</td>
-      <td>{fmt(row.brier, 'ru', 4)}</td>
-      <td>${fmt(row.total, 'ru', 3)}</td>
+      <td><span class="model-name">{row.model}</span><br />{row.cell === 'fixed·odds_aware' ? 'Готовый контекст' : 'Агент'} · с коэффициентами</td>
+      <td class="numeric">{fmt(row.brier, 'ru', 4)}</td>
+      <td class="numeric">${fmt(row.total, 'ru', 3)}</td>
     </tr>
   ))}</tbody>
 </table>
@@ -214,6 +215,7 @@ hy3, например, оценила шансы Team Vision в 78%. В объя
   showSource={false}
   note="Прибыль / сумма записанных ставок. Объединены два режима с коэффициентами; число рядом с ROI — количество ставок. Ставки разных моделей часто относятся к одному исходу."
   rows={charts('ru').money}
+  modelLabels={true}
   domain={[-40, 0]}
   rule={{ at: 0, label: '0%' }}
 />
@@ -227,9 +229,9 @@ hy3, например, оценила шансы Team Vision в 78%. В объя
   <tbody>{['champion_wins', 'other_series'].map(key => (
     <tr>
       <td>{key === 'champion_wins' ? 'Пять побед Spirit' : 'Остальные девять серий'}</td>
-      <td>{deepDive.summary.money[key].n}</td>
-      <td>{fmt(deepDive.summary.money[key].stake, 'ru')}</td>
-      <td>{fmt(deepDive.summary.money[key].profit, 'ru')}</td>
+      <td class="numeric">{deepDive.summary.money[key].n}</td>
+      <td class="numeric">{fmt(deepDive.summary.money[key].stake, 'ru')}</td>
+      <td class="numeric">{fmt(deepDive.summary.money[key].profit, 'ru')}</td>
     </tr>
   ))}</tbody>
 </table>
@@ -252,8 +254,8 @@ Spirit я, конечно, выделил уже после турнира, зн
 
 | Коэффициент | Ставок | Поставлено | ROI |
 |---|---:|---:|---:|
-| Меньше 2,0 | 236 | 257,3 | +2,9% |
-| От 2,0 | 274 | 250,7 | −60,0% |
+| Меньше <span class="numeric">2,0</span> | <span class="numeric">236</span> | <span class="numeric">257,3</span> | <span class="numeric">+2,9%</span> |
+| От <span class="numeric">2,0</span> | <span class="numeric">274</span> | <span class="numeric">250,7</span> | <span class="numeric">−60,0%</span> |
 
 </div>
 
@@ -279,9 +281,9 @@ Spirit я, конечно, выделил уже после турнира, зн
   <thead><tr><th>Модель</th><th>Ставить поровну</th><th>Суммы от модели</th></tr></thead>
   <tbody>{facts.insights.stake_sizing.models.map(row => (
     <tr>
-      <td>{row.model}</td>
-      <td>{fmt(row.flat_roi * 100, 'ru')}%</td>
-      <td>{fmt(row.weighted_roi * 100, 'ru')}%</td>
+      <td class="model-name">{row.model}</td>
+      <td class="numeric">{fmt(row.flat_roi * 100, 'ru')}%</td>
+      <td class="numeric">{fmt(row.weighted_roi * 100, 'ru')}%</td>
     </tr>
   ))}</tbody>
 </table>
@@ -321,13 +323,13 @@ Spirit я, конечно, выделил уже после турнира, зн
 <div class="table-overflow" tabindex="0" role="region" aria-label="Сравнение Astra, Sol и рынка">
 
 <table>
-  <thead><tr><th>Режим</th><th>Brier Astra ↓</th><th>Brier Sol ↓</th><th>Ранняя линия ↓</th></tr></thead>
+  <thead><tr><th>Режим</th><th>Brier <span class="model-name">Astra</span> ↓</th><th>Brier <span class="model-name">Sol</span> ↓</th><th>Ранняя линия ↓</th></tr></thead>
   <tbody>{['price_blind', 'odds_aware'].map(variant => (
     <tr>
       <td>{variant === 'price_blind' ? 'Без коэффициентов' : 'С коэффициентами'}</td>
-      <td>{fmt(facts.replay.summary[variant].brier, 'ru', 4)}</td>
-      <td>{fmt(facts.replay.summary[variant].reference.brier, 'ru', 4)}</td>
-      <td>{fmt(facts.replay.summary[variant].market.brier, 'ru', 4)}</td>
+      <td class="numeric">{fmt(facts.replay.summary[variant].brier, 'ru', 4)}</td>
+      <td class="numeric">{fmt(facts.replay.summary[variant].reference.brier, 'ru', 4)}</td>
+      <td class="numeric">{fmt(facts.replay.summary[variant].market.brier, 'ru', 4)}</td>
     </tr>
   ))}</tbody>
 </table>

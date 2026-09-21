@@ -10,14 +10,14 @@ const { source } = Astro.props;
   <blockquote>
     <slot />
   </blockquote>
-  {source && <figcaption>{source}</figcaption>}
+  {source && <figcaption class="supporting-text">{source}</figcaption>}
 </figure>
 
 <style>
   .q { margin: 48px 0; }
-  .q blockquote { margin: 0; padding: 4px 0 4px 24px; border-left: 3px solid var(--ink); font-size: 19px; letter-spacing: -0.014em; line-height: 1.5; }
+  .q blockquote { margin: 0; padding: 4px 0 4px 24px; border-left: 3px solid var(--ink); font-size: 20px; letter-spacing: -0.014em; line-height: 30px; }
   .q :global(p) { margin: 0 0 8px; }
   .q :global(p:last-child) { margin-bottom: 0; }
   .q :global(em) { font-style: italic; }
-  .q figcaption { margin: 12px 0 0; padding-left: 24px; color: var(--muted); font-family: var(--mono); font-size: 11px; line-height: 1.5; }
+  .q figcaption { margin: 12px 0 0; padding-left: 24px; }
 </style>

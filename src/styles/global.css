@@ -18,6 +18,8 @@
   --fill: light-dark(#20201f, #b0b0aa);
   --fill-soft: light-dark(#85847f, #6e6e69);
   --sidebar: clamp(250px, 19vw, 270px);
+  /* Article, contents, gap and side padding at their maximum widths. */
+  --main-max-width: 1384px;
   --pad: clamp(24px, 4vw, 64px);
   --mono: 'JetBrains Mono Variable', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   --sans: 'Roboto Variable', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -70,7 +72,9 @@ img, svg { display: block; max-width: 100%; }
 
 .page-shell {
   display: grid;
+  max-width: calc(var(--sidebar) + var(--main-max-width));
   min-height: 100dvh;
+  margin-inline: auto;
   grid-template-columns: var(--sidebar) minmax(0, 1fr);
 }
 
@@ -92,11 +96,11 @@ img, svg { display: block; max-width: 100%; }
 .identity-name {
   display: block;
   margin-bottom: 2px;
-  font-size: clamp(20px, 1.35vw, 26px);
+  font-size: 20px;
   font-weight: 650;
   letter-spacing: -0.035em;
 }
-.identity-role { color: var(--muted); font-family: var(--sans); font-size: 13px; letter-spacing: normal; }
+.identity-role { color: var(--muted); font-family: var(--sans); font-size: 14px; letter-spacing: normal; }
 .sidebar-foot { display: flex; margin-top: auto; align-items: center; gap: 16px; }
 .language-switch { display: flex; gap: 8px; color: var(--faint); font-family: var(--mono); font-size: 12px; letter-spacing: .04em; line-height: 1.2; }
 .language-switch a { color: var(--muted); text-decoration: none; }

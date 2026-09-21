@@ -26,16 +26,16 @@ const delta = (n: number) => `${n >= 0 ? '+' : '−'}${number(Math.abs(n))}`;
       </tr></thead>
       <tbody>
         {withBenchmarks(leaders).map(row => 'id' in row ? <tr class="benchmark" data-benchmark={row.id} data-brier={row.brier}>
-          <td>—</td><th scope="row">{row.label}<span>{row.note}</span></th>
-          <td>{number(row.brier)}</td><td>—</td><td>{row.n}</td>
+          <td>—</td><th scope="row">{row.label}<span class="supporting-text">{row.note}</span></th>
+          <td class="numeric">{number(row.brier)}</td><td>—</td><td class="numeric">{row.n}</td>
         </tr> : <tr data-model={row.model} data-cell={row.cell} data-brier={row.brier}>
-          <td>{row.rank}</td><th scope="row">{row.model}<span>{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th><td>{number(row.brier)}</td>
-          <td>{delta(row.market_delta)}</td><td>{row.n}</td>
+          <td class="numeric">{row.rank}</td><th scope="row"><span class="model-name">{row.model}</span><span class="supporting-text">{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th><td class="numeric">{number(row.brier)}</td>
+          <td class="numeric">{delta(row.market_delta)}</td><td class="numeric">{row.n}</td>
         </tr>)}
       </tbody>
     </table>
   </div>
-  <details>
+  <details class="article-details">
     <summary>{ru ? 'Все 48 результатов по моделям и режимам' : 'All 48 model and configuration results'}</summary>
     <div class="table-scroll" tabindex="0" role="region" aria-label={ru ? 'Рейтинг 48 конфигураций' : 'Ranking of 48 configurations'}>
       <table data-leaderboard="configurations">
@@ -47,11 +47,11 @@ const delta = (n: number) => `${n >= 0 ? '+' : '−'}${number(Math.abs(n))}`;
         </tr></thead>
         <tbody>
         {withBenchmarks(configurations).map(row => 'id' in row ? <tr class="benchmark" data-benchmark={row.id} data-brier={row.brier}>
-          <td>—</td><th scope="row">{row.label}<span>{row.note}</span></th>
-          <td>{number(row.brier)}</td><td>—</td><td>{row.n}</td>
+          <td>—</td><th scope="row">{row.label}<span class="supporting-text">{row.note}</span></th>
+          <td class="numeric">{number(row.brier)}</td><td>—</td><td class="numeric">{row.n}</td>
         </tr> : <tr data-model={row.model} data-cell={row.cell} data-brier={row.brier}>
-          <td>{row.rank}</td><th scope="row">{row.model}<span>{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th>
-          <td>{number(row.brier)}</td><td>{delta(row.market_delta)}</td><td>{row.n}</td>
+          <td class="numeric">{row.rank}</td><th scope="row"><span class="model-name">{row.model}</span><span class="supporting-text">{modeLabels[lang][modeKeys.indexOf(row.cell as typeof modeKeys[number])]}</span></th>
+          <td class="numeric">{number(row.brier)}</td><td class="numeric">{delta(row.market_delta)}</td><td class="numeric">{row.n}</td>
         </tr>)}</tbody>
       </table>
     </div>
@@ -61,21 +61,18 @@ const delta = (n: number) => `${n >= 0 ? '+' : '−'}${number(Math.abs(n))}`;
 <style>
   .leaderboard { margin: 32px 0 40px; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
-  .leaderboard table { display: table; width: 100%; min-width: 540px; margin: 0; border-collapse: collapse; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
-  .leaderboard caption { padding-bottom: 14px; text-align: left; color: var(--muted); font-size: 12px; white-space: normal; }
-  .leaderboard th, .leaderboard td { padding: 11px 8px; border-bottom: 1px solid var(--line); font-weight: 400; text-transform: none; letter-spacing: normal; white-space: nowrap; }
-  .leaderboard thead th { color: var(--muted); }
-  .leaderboard tbody th { text-align: left; color: var(--ink); }
+  .leaderboard table { display: table; min-width: 540px; margin: 0; }
+  .leaderboard th, .leaderboard td { padding: 12px 8px; white-space: nowrap; }
+  .leaderboard tbody th { text-align: left; white-space: normal; overflow-wrap: anywhere; }
   .leaderboard td { text-align: right; }
   .leaderboard th:nth-child(n+3) { text-align: right; }
   .leaderboard th:first-child, .leaderboard td:first-child { padding-left: 0; text-align: left; color: var(--muted); }
   .leaderboard .benchmark th, .leaderboard .benchmark td { font-weight: 600; border-bottom-color: var(--line-strong); }
-  .leaderboard span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; white-space: normal; }
-  .leaderboard details { margin-top: 24px; border-top: 1px solid var(--line); }
-  .leaderboard summary { padding: 12px 0; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .leaderboard .supporting-text { display: block; margin-top: 4px; white-space: normal; }
+  .leaderboard details { margin-top: 24px; }
   @media (max-width: 760px) {
-    .leaderboard table { min-width: 0; font-size: 11px; }
-    .leaderboard th, .leaderboard td { padding: 10px 4px; }
-    .leaderboard thead th { font-size: 10px; white-space: normal; }
+    .leaderboard table { min-width: 0; }
+    .leaderboard th, .leaderboard td { padding: 12px 4px; }
+    .leaderboard thead th { white-space: normal; }
   }
 </style>

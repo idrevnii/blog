@@ -16,9 +16,9 @@ const { items, cols = 3 } = Astro.props;
 <dl class="tiles" style={`--cols: ${cols}`}>
   {items.map((item, i) => (
     <div data-lead={i % cols === 0 ? '' : undefined}>
-      <dt>{item.value}</dt>
-      <dd>{item.label}</dd>
-      {item.note && <dd class="s">{item.note}</dd>}
+      <dt class="numeric">{item.value}</dt>
+      <dd class="supporting-text">{item.label}</dd>
+      {item.note && <dd class="s supporting-text">{item.note}</dd>}
     </div>
   ))}
 </dl>
@@ -37,10 +37,11 @@ const { items, cols = 3 } = Astro.props;
      text sits on the rule. Only the first cell of each row stays flush with the prose. */
   .tiles > div { display: flex; padding: 24px 16px 16px; background: var(--paper); flex-direction: column; align-items: flex-start; }
   .tiles > div[data-lead] { padding-left: 0; }
-  dt { font-family: var(--mono); font-size: clamp(22px, 2vw, 32px); font-weight: 500; letter-spacing: -0.02em; }
-  dd { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
-  dd.s { margin-top: 2px; color: var(--muted); font-size: 11px; }
+  dt { font-size: 28px; font-weight: 500; letter-spacing: -0.02em; line-height: 36px; }
+  dd { margin: 4px 0 0; }
+  dd.s { margin-top: 2px; }
   @media (max-width: 640px) {
+    dt { font-size: 24px; line-height: 32px; }
     /* Two columns regardless of --cols, so the desktop lead flags no longer line up. */
     .tiles { margin: 32px 0 24px; grid-template-columns: repeat(2, 1fr); }
     .tiles > div { padding-left: 16px; }

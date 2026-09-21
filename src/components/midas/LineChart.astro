@@ -24,12 +24,12 @@ interface Props {
 
 const { title, note, series, xLabels, yTicks, yDomain, xLabel, yLabel, showSource = true } = Astro.props;
 
-const W = 680;
+const W = 720;
 const H = 310;
-const T = 26;
-const B = 48;
-const L = 56;
-const endLabelW = Math.max(...series.map((s) => s.name.length)) * 6.7 + 22;
+const T = 32;
+const B = 56;
+const L = 64;
+const endLabelW = Math.max(...series.map((s) => s.name.length)) * 8.8 + 22;
 const R = endLabelW;
 const plotW = W - L - R;
 const plotH = H - T - B;
@@ -41,7 +41,7 @@ const Y = (v: number) => T + (1 - (v - yDomain[0]) / (yDomain[1] - yDomain[0])) 
 const lines = series.map((s) => {
   const pts = s.values.map((v, i) => ({
     x: X(i), y: Y(v),
-    labelY: Y(v) + (v === Math.max(...series.map(other => other.values[i])) ? -12 : 18),
+    labelY: Y(v) + (v === Math.max(...series.map(other => other.values[i])) ? -14 : 22),
   }));
   return {
     ...s,
@@ -56,13 +56,13 @@ const lines = series.map((s) => {
     {yTicks.map((t) => (
       <g>
         <line x1={L} y1={Y(t.value)} x2={L + plotW} y2={Y(t.value)} class="grid" />
-        <text x={L - 10} y={Y(t.value) + 3.5} class="ax" text-anchor="end">{t.label}</text>
+        <text x={L - 24} y={Y(t.value) + 5} class="ax numeric" text-anchor="end">{t.label}</text>
       </g>
     ))}
     {xLabels.map((label, i) => (
       <g>
         <line x1={X(i)} y1={T} x2={X(i)} y2={T + plotH} class="guide" />
-        <text x={X(i)} y={H - B + 20} class="ax" text-anchor="middle">{label}</text>
+        <text x={X(i)} y={H - B + 24} class="ax" text-anchor="middle">{label}</text>
       </g>
     ))}
     {lines.map((line) => (
@@ -73,28 +73,26 @@ const lines = series.map((s) => {
             <circle cx={p.x} cy={p.y} r="4.5" class={`dot ${line.tone ?? 'ink'}`}>
               <title>{line.titles?.[i] ?? `${xLabels[i]} · ${line.name}: ${line.values[i].toFixed(1)}%`}</title>
             </circle>
-            <text x={p.x} y={p.labelY} class="value" text-anchor="middle">{Math.round(line.values[i])}%</text>
+            <text x={p.x} y={p.labelY} class="value numeric" text-anchor="middle">{Math.round(line.values[i])}%</text>
           </g>
         ))}
-        <text x={line.pts[n - 1].x + 14} y={line.pts[n - 1].y + 3.5} class={`end ${line.tone ?? 'ink'}`}>{line.name}</text>
+        <text x={line.pts[n - 1].x + 14} y={line.pts[n - 1].y + 5} class={`end ${line.tone ?? 'ink'}`}>{line.name}</text>
       </g>
     ))}
-    {yLabel && <text x="2" y="13" class="ax">{yLabel}</text>}
+    {yLabel && <text x="2" y="16" class="ax">{yLabel}</text>}
     {xLabel && <text x={L + plotW} y={H - 6} class="ax" text-anchor="end">{xLabel}</text>}
   </svg>
 </Figure>
 
 <style>
-  text { font-family: var(--mono); }
-  .ax { fill: var(--muted); font-size: 10.5px; }
+  .ax { fill: var(--muted); }
   .grid { stroke: var(--line); }
   .guide { stroke: var(--line); stroke-dasharray: 2 5; }
-  .value { fill: var(--ink); font-size: 11px; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+  .value { fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
   .line.ink { fill: none; stroke: var(--fill); stroke-width: 2; stroke-linejoin: round; }
   .line.muted { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-dasharray: 5 4; }
   .dot.ink { fill: var(--fill); }
   .dot.muted { fill: var(--paper); stroke: var(--muted); stroke-width: 2; }
-  .end { font-size: 11px; }
   .end.ink { fill: var(--ink); }
   .end.muted { fill: var(--muted); }
 </style>

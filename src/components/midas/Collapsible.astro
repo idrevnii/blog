@@ -6,7 +6,7 @@ interface Props {
 const { summary } = Astro.props;
 ---
 
-<details class="fold">
+<details class="fold article-details">
   <summary>{summary}</summary>
   <div class="fold-b">
     <slot />
@@ -14,12 +14,7 @@ const { summary } = Astro.props;
 </details>
 
 <style>
-  .fold { margin: 24px 0 8px; border-top: 1px solid var(--line); }
-  .fold summary { padding: 12px 0 8px; color: var(--muted); font-family: var(--mono); font-size: 12px; letter-spacing: normal; text-transform: none; cursor: pointer; list-style: none; }
-  .fold summary::-webkit-details-marker { display: none; }
-  .fold summary::before { content: '+ '; color: var(--ink); }
-  .fold[open] summary::before { content: '− '; }
-  .fold summary:hover { color: var(--ink); }
+  .fold { margin: 24px 0 8px; }
   .fold-b { padding: 2px 0 16px; }
   .fold-b > :global(*:first-child) { margin-top: 0; }
 </style>

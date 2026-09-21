@@ -8,26 +8,30 @@ interface Props {
   rows: HBarRow[];
   showTable?: boolean;
   showSource?: boolean;
+  modelLabels?: boolean;
+  spacious?: boolean;
   /** Explicit value domain; defaults to [min(0, values…), max(0, values…)]. */
   domain?: [number, number];
   /** Dashed vertical reference line, in data units. */
   rule?: { at: number; label?: string };
 }
 
-const { title, note, rows, domain, rule, showTable = true, showSource = true } = Astro.props;
+const { title, note, rows, domain, rule, spacious = false, showTable = true, showSource = true, modelLabels = false } = Astro.props;
 const isRu = Astro.url.pathname.includes('/ru/');
 
 const W = 720;
-const ROW = 34;
+const ROW = spacious ? 42 : 34;
 const BAR = 24;
 const TOP = 2;
-const charW = 6.7;
-const labelCharW = 6.9;
+const SUB_GAP = spacious ? 16 : 8;
+const charW = 9.7;
+const labelCharW = 8.8;
 
 const maxLabelLen = Math.max(...rows.map((r) => r.label.length));
-const labelW = Math.min(250, Math.max(80, maxLabelLen * labelCharW + 6));
+const labelW = Math.min(250, Math.max(80, maxLabelLen * (modelLabels ? charW : labelCharW) + 6));
+const labelParts = (label: string) => label.split(/(\d+(?:[.,]\d+)?%?)/).map(text => ({ text, numeric: /^\d/.test(text) }));
 
-const textW = (r: HBarRow) => r.display.length * charW + (r.sub ? r.sub.length * 6 + 8 : 0);
+const textW = (r: HBarRow) => r.display.length * charW + (r.sub ? r.sub.length * charW + SUB_GAP : 0);
 const pos = rows.filter((r) => r.value >= 0);
 const neg = rows.filter((r) => r.value < 0);
 const posTextW = pos.length ? Math.max(...pos.map(textW)) + 10 : 12;
@@ -60,32 +64,32 @@ const bars = rows.map((row, i) => {
 const ruleX = rule ? x0 + (rule.at - lo) * scale : null;
 ---
 
-<Figure {title} {note} {showSource} headers={isRu ? ['Вариант', 'Значение'] : ['Entry', 'Value']} rows={showTable ? rows.map(r => [r.label, r.display]) : undefined}>
+<Figure {title} {note} {showSource} {modelLabels} {spacious} headers={isRu ? ['Вариант', 'Значение'] : ['Entry', 'Value']} rows={showTable ? rows.map(r => [r.label, r.display]) : undefined}>
   <svg data-chart="bars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
     {bars.map((b) => (
+      <rect x={b.barX} y={b.y} width={b.len} height={BAR} class={`bar ${b.variant ?? 'solid'}`}>
+        <title>{`${b.label}: ${b.display}`}</title>
+      </rect>
+    ))}
+    {/* Keep the reference visible at the bar origin, but behind the value labels. */}
+    {ruleX !== null && <line x1={ruleX} y1="0" x2={ruleX} y2={rows.length * ROW + 4} class="rule" />}
+    {bars.map((b) => (
       <g>
-        <text x={labelW} y={b.cy + 3.8} class="lbl" text-anchor="end">{b.label}</text>
-        <rect x={b.barX} y={b.y} width={b.len} height={BAR} class={`bar ${b.variant ?? 'solid'}`}>
-          <title>{`${b.label}: ${b.display}`}</title>
-        </rect>
-        <text x={b.tx} y={b.cy + 3.8} class="val" text-anchor={b.right ? 'start' : 'end'}>
-          {b.display}{b.sub && <tspan class="sub" dx="8">{b.sub}</tspan>}
+        <text x={labelW} y={b.cy + 5} class:list={['lbl', { 'model-name': modelLabels }]} text-anchor="end">{modelLabels ? b.label : labelParts(b.label).map(part => <tspan class:list={{ numeric: part.numeric }}>{part.text}</tspan>)}</text>
+        <text x={b.tx} y={b.cy + 5} class="val numeric" text-anchor={b.right ? 'start' : 'end'}>
+          {b.display}{b.sub && <tspan class="sub" dx={SUB_GAP}>{b.sub}</tspan>}
         </text>
       </g>
     ))}
-    {/* Drawn after the bars: at rule.at === 0 it coincides with the bar origin, so
-        behind them it was fully occluded and left its label dangling on its own. */}
-    {ruleX !== null && <line x1={ruleX} y1="0" x2={ruleX} y2={rows.length * ROW + 4} class="rule" />}
-    {rule?.label && ruleX !== null && <text x={ruleX} y={H - 6} class="ax" text-anchor="middle">{rule.label}</text>}
+    {rule?.label && ruleX !== null && <text x={ruleX} y={H - 6} class="ax" text-anchor="middle">{labelParts(rule.label).map(part => <tspan class:list={{ numeric: part.numeric }}>{part.text}</tspan>)}</text>}
   </svg>
 </Figure>
 
 <style>
-  text { font-family: var(--mono); }
-  .lbl { fill: var(--muted); font-size: 11px; }
-  .val { fill: var(--ink); font-size: 11px; }
-  .sub { fill: var(--muted); font-size: 10px; }
-  .ax { fill: var(--muted); font-size: 10px; }
+  .lbl { fill: var(--muted); }
+  .val { fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+  .sub { fill: var(--muted); }
+  .ax { fill: var(--muted); }
   .rule { stroke: var(--fill-soft); stroke-dasharray: 4 4; }
   .bar.solid { fill: var(--fill); }
   .bar.outline { fill: var(--paper); stroke: var(--fill); stroke-width: 1.4; }

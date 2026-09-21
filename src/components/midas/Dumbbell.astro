@@ -23,9 +23,9 @@ const LEGEND_H = 64;
 const R = 5.5;
 
 const maxLabelLen = Math.max(...rows.map((r) => r.label.length));
-const labelW = Math.min(250, Math.max(80, maxLabelLen * 6.9 + 6));
+const labelW = Math.min(250, Math.max(80, maxLabelLen * 9.7 + 6));
 const x0 = labelW + 14;
-const deltaW = Math.max(...rows.map((r) => r.delta.length)) * 6.7 + 22;
+const deltaW = Math.max(...rows.map((r) => r.delta.length)) * 9.7 + 22;
 const plotW = W - x0 - deltaW;
 
 const all = rows.flatMap((r) => [r.fixed, r.agent]);
@@ -45,35 +45,34 @@ const dots = rows.map((row, i) => {
 const legendY = rows.length * ROW + 52;
 ---
 
-<Figure {title} {note} {showSource} headers={[lang === 'ru' ? 'Модель' : 'Model', aLabel, bLabel]} rows={rows.map(r => [r.label, number.format(r.fixed), number.format(r.agent)])}>
+<Figure {title} {note} {showSource} modelLabels={true} headers={[lang === 'ru' ? 'Модель' : 'Model', aLabel, bLabel]} rows={rows.map(r => [r.label, number.format(r.fixed), number.format(r.agent)])}>
   <svg data-chart="paired" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
     {[0.6, 0.65, 0.7].map(v => <g>
       <line x1={X(v)} y1="0" x2={X(v)} y2={rows.length * ROW + 4} class="grid" />
-      <text x={X(v)} y={rows.length * ROW + 24} class="ax" text-anchor="middle">{number.format(v)}</text>
+      <text x={X(v)} y={rows.length * ROW + 24} class="ax numeric" text-anchor="middle">{number.format(v)}</text>
     </g>)}
     {dots.map((d) => (
       <g>
-        <text x={labelW} y={d.cy + 3.8} class="lbl" text-anchor="end">{d.label}</text>
+        <text x={labelW} y={d.cy + 5} class="lbl model-name" text-anchor="end">{d.label}</text>
         <line x1={d.ax} y1={d.cy} x2={d.bx} y2={d.cy} class="conn" />
         <circle cx={d.ax} cy={d.cy} r={R} class="dot-a"><title>{`${d.label} · ${aLabel}: ${number.format(d.fixed)}`}</title></circle>
         <circle cx={d.bx} cy={d.cy} r={R} class="dot-b"><title>{`${d.label} · ${bLabel}: ${number.format(d.agent)}`}</title></circle>
-        <text x={W - 10} y={d.cy + 3.8} class="val" text-anchor="end">{d.delta}</text>
+        <text x={W - 10} y={d.cy + 5} class="val numeric" text-anchor="end">{d.delta}</text>
       </g>
     ))}
     <g>
       <circle cx={x0} cy={legendY} r={R} class="dot-a" />
-      <text x={x0 + 12} y={legendY + 3.8} class="ax">{aLabel}</text>
+      <text x={x0 + 12} y={legendY + 5} class="legend">{aLabel}</text>
       <circle cx={x0 + 230} cy={legendY} r={R} class="dot-b" />
-      <text x={x0 + 242} y={legendY + 3.8} class="ax">{bLabel}</text>
+      <text x={x0 + 242} y={legendY + 5} class="legend">{bLabel}</text>
     </g>
   </svg>
 </Figure>
 
 <style>
-  text { font-family: var(--mono); }
-  .lbl { fill: var(--muted); font-size: 11px; }
-  .val { fill: var(--ink); font-size: 11px; }
-  .ax { fill: var(--muted); font-size: 10px; }
+  .lbl, .legend { fill: var(--muted); }
+  .val { fill: var(--ink); }
+  .ax { fill: var(--muted); }
   .conn { stroke: var(--line-strong); stroke-width: 2; }
   .grid { stroke: var(--line); stroke-dasharray: 2 5; }
   .dot-a { fill: var(--paper); stroke: var(--fill); stroke-width: 2; }

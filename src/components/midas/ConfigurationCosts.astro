@@ -24,24 +24,25 @@ const rows = [...facts.insights.configuration_costs.configurations].sort((a, b) 
       data-model={row.model} data-cell={row.cell} data-count={row.n}
     >
       <th scope="row">
-        {row.model}
-        <span>{modeLabels[lang][modeIndex(row.cell)]}</span>
-        <span>{ru ? `Зачётных ответов: ${row.n}` : `Eligible forecasts: ${row.n}`}</span>
+        <span class="model-name">{row.model}</span>
+        <span class="supporting-text">{modeLabels[lang][modeIndex(row.cell)]}</span>
+        <span class="supporting-text">{ru ? 'Зачётных ответов:' : 'Eligible forecasts:'} <span class="numeric">{row.n}</span></span>
       </th>
-      <td>${fmt(row.total, lang, 3)}</td>
-      <td>${fmt(row.per_forecast, lang, 4)}</td>
+      <td class="numeric">${fmt(row.total, lang, 3)}</td>
+      <td class="numeric">${fmt(row.per_forecast, lang, 4)}</td>
     </tr>)}</tbody>
   </table>
 </div>
 
 <style>
-  .configuration-costs table { display: table; table-layout: fixed; width: 100%; margin: 0; border-collapse: collapse; white-space: normal; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
-  .configuration-costs caption { padding-bottom: 16px; color: var(--muted); text-align: left; font-size: 12px; }
-  .configuration-costs th, .configuration-costs td { padding: 12px 6px; border-bottom: 1px solid var(--line); font-weight: 400; text-transform: none; letter-spacing: normal; text-align: right; }
+  .configuration-costs table { display: table; table-layout: fixed; margin: 0; white-space: normal; }
+  .configuration-costs th, .configuration-costs td { padding: 12px 8px; text-align: right; }
   .configuration-costs th:first-child { width: 52%; padding-left: 0; text-align: left; overflow-wrap: anywhere; }
   .configuration-costs th:last-child, .configuration-costs td:last-child { padding-right: 0; }
-  .configuration-costs tbody th { color: var(--ink); }
   .configuration-costs td { white-space: nowrap; }
-  .configuration-costs span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+  .configuration-costs .supporting-text { display: block; margin-top: 4px; }
   .configuration-costs .model-start th, .configuration-costs .model-start td { border-top: 1px solid var(--line-strong); padding-top: 20px; }
+  @media (max-width: 380px) {
+    .configuration-costs th:first-child { width: 46%; }
+  }
 </style>

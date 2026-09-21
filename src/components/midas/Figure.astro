@@ -7,27 +7,29 @@ interface Props {
   showSource?: boolean;
   headers?: string[];
   rows?: (string | number)[][];
+  modelLabels?: boolean;
+  spacious?: boolean;
 }
 
-const { title, note, source = '/research/midas/verified.json', headers, rows, showSource = true } = Astro.props;
+const { title, note, source = '/research/midas/verified.json', headers, rows, showSource = true, modelLabels = false, spacious = false } = Astro.props;
 const isRu = Astro.url.pathname.includes('/ru/');
 ---
 
-<figure class="fig">
+<figure class:list={['fig', { 'fig-spacious': spacious }]}>
   {title && <figcaption class="fig-t">{title}</figcaption>}
   <div class="fig-body" tabindex="0" role="region" aria-label={title}>
     <slot />
   </div>
-  {note && <p class="fig-n">{note}</p>}
-  {headers && rows && <details class="fig-data">
+  {note && <p class="fig-n supporting-text">{note}</p>}
+  {headers && rows && <details class="fig-data article-details">
     <summary>{isRu ? 'Числа в таблице' : 'View numbers'}</summary>
     <div class="fig-table" tabindex="0" role="region" aria-label={title}><table>
       <caption>{title}</caption>
       <thead><tr>{headers.map(h => <th scope="col">{h}</th>)}</tr></thead>
-      <tbody>{rows.map(row => <tr>{row.map((cell, i) => i === 0 ? <th scope="row">{cell}</th> : <td>{cell}</td>)}</tr>)}</tbody>
+      <tbody>{rows.map(row => <tr>{row.map((cell, i) => i === 0 ? <th scope="row" class:list={{ 'model-name': modelLabels }}>{cell}</th> : <td class="numeric">{cell}</td>)}</tr>)}</tbody>
     </table></div>
   </details>}
-  {showSource && <a class="fig-source" href={withBase(source)}>
+  {showSource && <a class="fig-source supporting-text" href={withBase(source)}>
     {isRu ? 'Данные графика' : 'Chart data'}
   </a>}
 </figure>
@@ -39,23 +41,25 @@ const isRu = Astro.url.pathname.includes('/ru/');
     padding-top: 12px;
     border-top: 1px solid var(--line-strong);
     color: var(--ink);
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 650;
-    line-height: 1.35;
+    line-height: 28px;
     text-wrap: balance;
     text-transform: none;
     letter-spacing: normal;
   }
   .fig-body { overflow-x: auto; }
-  .fig-body :global(svg) { display: block; width: 100%; height: auto; min-width: 640px; }
-  .fig-n { margin: 16px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
-  .fig-source { display: inline-block; margin-top: 8px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
-  .fig-data { margin-top: 12px; color: var(--muted); font-size: 12px; }
-  .fig-data summary { cursor: pointer; }
+  /* At the 640px minimum width, the 720-unit charts still render text above 14px. */
+  .fig-body :global(svg) { display: block; width: 100%; height: auto; min-width: 640px; font: 400 16px/1 var(--sans); font-variant-numeric: tabular-nums; }
+  .fig-n { margin: 16px 0 0; }
+  .fig-spacious .fig-t { margin-bottom: 24px; }
+  .fig-spacious .fig-n { margin-top: 24px; }
+  .fig-source { display: inline-block; margin-top: 8px; }
+  .fig-data { margin-top: 12px; }
   .fig-table { overflow-x: auto; }
-  .fig-data table { width: 100%; margin-top: 12px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  .fig-data caption { text-align: left; margin-bottom: 8px; }
-  .fig-data th, .fig-data td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); text-align: left; text-transform: none; letter-spacing: normal; font-weight: 400; }
+  .fig-data table { margin-top: 12px; }
+  .fig-data th, .fig-data td { padding: 12px 8px; }
+  .fig-data th:first-child, .fig-data td:first-child { padding-left: 0; }
   @media (max-width: 760px) {
     .fig { margin: 32px 0 48px; }
   }

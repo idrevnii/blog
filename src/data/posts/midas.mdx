@@ -91,6 +91,7 @@ Each row is one model–configuration combination. Its Brier score uses all elig
   showSource={false}
   note="Brier score across 14 series. Each configuration averages individual model forecasts; the number on the right is the forecast count. The dashed line marks a constant 50% prediction."
   rows={charts('en').brierModes}
+  spacious={true}
   domain={[0, 0.3]}
   rule={{ at: 0.25, label: '50–50' }}
 />
@@ -136,9 +137,9 @@ I separately pulled out answers where a model without odds favored the opposite 
   <tbody>{['fixed·price_blind', 'agent·price_blind'].map(cell => (
     <tr>
       <td>{cell === 'fixed·price_blind' ? 'Fixed context' : 'Agent'}</td>
-      <td>{deepDive.summary.disagreements[cell].opposite.n}</td>
-      <td>{deepDive.summary.disagreements[cell].opposite.model_correct}</td>
-      <td>{deepDive.summary.disagreements[cell].opposite.series}</td>
+      <td class="numeric">{deepDive.summary.disagreements[cell].opposite.n}</td>
+      <td class="numeric">{deepDive.summary.disagreements[cell].opposite.model_correct}</td>
+      <td class="numeric">{deepDive.summary.disagreements[cell].opposite.series}</td>
     </tr>
   ))}</tbody>
 </table>
@@ -157,9 +158,9 @@ The overall $25.51 doesn't tell us much about the price of a good forecast: it i
   <thead><tr><th>Model and configuration</th><th>Brier ↓</th><th>For 14 answers</th></tr></thead>
   <tbody>{facts.insights.configuration_costs.configurations.slice(0, 3).map(row => (
     <tr>
-      <td>{row.model}<br />{row.cell === 'fixed·odds_aware' ? 'Fixed context' : 'Agent'} · with odds</td>
-      <td>{fmt(row.brier, 'en', 4)}</td>
-      <td>${fmt(row.total, 'en', 3)}</td>
+      <td><span class="model-name">{row.model}</span><br />{row.cell === 'fixed·odds_aware' ? 'Fixed context' : 'Agent'} · with odds</td>
+      <td class="numeric">{fmt(row.brier, 'en', 4)}</td>
+      <td class="numeric">${fmt(row.total, 'en', 3)}</td>
     </tr>
   ))}</tbody>
 </table>
@@ -214,6 +215,7 @@ In the configurations with odds, models selected 510 settled bets on 45 distinct
   showSource={false}
   note="Profit / total recorded stake, combining both configurations with odds. The number beside ROI is the bet count. Different models frequently bet on the same outcome."
   rows={charts('en').money}
+  modelLabels={true}
   domain={[-40, 0]}
   rule={{ at: 0, label: '0%' }}
 />
@@ -227,9 +229,9 @@ Looking at that chart, it's easy to assume the models bet about equally badly th
   <tbody>{['champion_wins', 'other_series'].map(key => (
     <tr>
       <td>{key === 'champion_wins' ? "Spirit's five wins" : 'The other nine series'}</td>
-      <td>{deepDive.summary.money[key].n}</td>
-      <td>{fmt(deepDive.summary.money[key].stake, 'en')}</td>
-      <td>{fmt(deepDive.summary.money[key].profit, 'en')}</td>
+      <td class="numeric">{deepDive.summary.money[key].n}</td>
+      <td class="numeric">{fmt(deepDive.summary.money[key].stake, 'en')}</td>
+      <td class="numeric">{fmt(deepDive.summary.money[key].profit, 'en')}</td>
     </tr>
   ))}</tbody>
 </table>
@@ -252,8 +254,8 @@ Splitting bets at decimal odds of 2.0 is revealing too:
 
 | Odds | Bets | Total stake | ROI |
 |---|---:|---:|---:|
-| Below 2.0 | 236 | 257.3 | +2.9% |
-| At least 2.0 | 274 | 250.7 | −60.0% |
+| Below <span class="numeric">2.0</span> | <span class="numeric">236</span> | <span class="numeric">257.3</span> | <span class="numeric">+2.9%</span> |
+| At least <span class="numeric">2.0</span> | <span class="numeric">274</span> | <span class="numeric">250.7</span> | <span class="numeric">−60.0%</span> |
 
 </div>
 
@@ -279,9 +281,9 @@ Models chose stake sizes only in the two configurations with odds: fixed context
   <thead><tr><th>Model</th><th>Equal stakes</th><th>Model-chosen stakes</th></tr></thead>
   <tbody>{facts.insights.stake_sizing.models.map(row => (
     <tr>
-      <td>{row.model}</td>
-      <td>{fmt(row.flat_roi * 100, 'en')}%</td>
-      <td>{fmt(row.weighted_roi * 100, 'en')}%</td>
+      <td class="model-name">{row.model}</td>
+      <td class="numeric">{fmt(row.flat_roi * 100, 'en')}%</td>
+      <td class="numeric">{fmt(row.weighted_roi * 100, 'en')}%</td>
     </tr>
   ))}</tbody>
 </table>
@@ -321,13 +323,13 @@ I took the saved contexts from the original gpt-5.6-sol runs and reconstructed t
 <div class="table-overflow" tabindex="0" role="region" aria-label="Astra, Sol and market comparison">
 
 <table>
-  <thead><tr><th>Configuration</th><th>Astra Brier ↓</th><th>Sol Brier ↓</th><th>Early market ↓</th></tr></thead>
+  <thead><tr><th>Configuration</th><th><span class="model-name">Astra</span> Brier ↓</th><th><span class="model-name">Sol</span> Brier ↓</th><th>Early market ↓</th></tr></thead>
   <tbody>{['price_blind', 'odds_aware'].map(variant => (
     <tr>
       <td>{variant === 'price_blind' ? 'Without odds' : 'With odds'}</td>
-      <td>{fmt(facts.replay.summary[variant].brier, 'en', 4)}</td>
-      <td>{fmt(facts.replay.summary[variant].reference.brier, 'en', 4)}</td>
-      <td>{fmt(facts.replay.summary[variant].market.brier, 'en', 4)}</td>
+      <td class="numeric">{fmt(facts.replay.summary[variant].brier, 'en', 4)}</td>
+      <td class="numeric">{fmt(facts.replay.summary[variant].reference.brier, 'en', 4)}</td>
+      <td class="numeric">{fmt(facts.replay.summary[variant].market.brier, 'en', 4)}</td>
     </tr>
   ))}</tbody>
 </table>

@@ -54,41 +54,87 @@ const toc = headings.filter(({ depth }) => depth === 2);
 </BaseLayout>
 
 <style>
-  .article-shell { display: grid; padding: clamp(32px, 4vw, 64px) var(--pad) 96px; grid-template-columns: minmax(0, 880px) minmax(200px, 280px); gap: clamp(48px, 6vw, 96px); }
+  .article-shell {
+    display: grid;
+    max-width: var(--main-max-width);
+    margin-inline: auto;
+    padding: clamp(32px, 4vw, 64px) var(--pad) 96px;
+    grid-template-columns: minmax(0, 880px) minmax(200px, 280px);
+    gap: clamp(48px, 6vw, 96px);
+  }
   .article-shell.without-toc { display: block; max-width: 1000px; }
   .article-header { margin-bottom: 48px; padding-bottom: 48px; border-bottom: 1px solid var(--line); }
   :global(.article-header:has(+ .prose > .tiles:first-child)) { margin-bottom: 32px; padding-bottom: 0; border-bottom: 0; }
-  .article-header .display-title { margin-bottom: 32px; white-space: pre-line; }
-  .article-header .lede { margin-bottom: 0; letter-spacing: normal; }
-  .article-meta { color: var(--muted); font-family: var(--sans); font-size: 13px; font-weight: 400; letter-spacing: normal; line-height: 1.6; }
+  .article-header .display-title { margin-bottom: 32px; font-size: 48px; line-height: 52px; white-space: pre-line; }
+  .article-header .lede { margin-bottom: 0; font-size: 22px; line-height: 32px; letter-spacing: normal; }
+  .article-meta { color: var(--muted); font-family: var(--sans); font-size: 14px; font-weight: 400; letter-spacing: normal; line-height: 20px; }
   .article-meta { display: flex; align-items: center; gap: 12px; }
   .article-meta span::before { margin-right: 12px; content: '·'; }
   .toc { position: sticky; top: 64px; height: fit-content; }
   .toc nav { display: flex; margin: 24px 0 32px; flex-direction: column; }
-  .toc nav a { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; text-decoration: none; }
+  .toc nav a { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 18px; text-decoration: none; }
   .toc nav a:hover { color: var(--ink); }
-  .back-link { color: var(--muted); font-size: 12px; }
-  .prose { max-width: 780px; font-size: 17px; line-height: 1.66; }
-  .prose :global(h2) { margin: 64px 0 24px; scroll-margin-top: 32px; font-size: clamp(29px, 2.3vw, 40px); font-weight: 480; letter-spacing: -.035em; line-height: 1.1; }
-  .prose :global(h3) { margin: 48px 0 16px; scroll-margin-top: 32px; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+  .back-link { color: var(--muted); font-size: 12px; line-height: 18px; }
+  .prose {
+    --body-font: 400 18px/28px var(--sans);
+    --supporting-font: 400 14px/20px var(--sans);
+    max-width: 780px;
+    font: var(--body-font);
+  }
+  .prose :global(h2) { margin: 64px 0 24px; scroll-margin-top: 32px; font-size: 32px; font-weight: 480; letter-spacing: -.035em; line-height: 38px; }
+  .prose :global(h3) { margin: 48px 0 16px; scroll-margin-top: 32px; font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 28px; }
   .prose :global(p) { margin: 0 0 24px; }
   .prose :global(strong) { font-weight: 650; }
-  .prose :global(blockquote) { margin: 32px 0; padding: 4px 0 4px 24px; border-left: 3px solid var(--ink); font-size: 20px; letter-spacing: -.015em; line-height: 1.45; }
+  .prose :global(blockquote) { margin: 32px 0; padding: 4px 0 4px 24px; border-left: 3px solid var(--ink); font-size: 20px; letter-spacing: -.015em; line-height: 30px; }
   .prose :global(blockquote p) { margin: 0; }
   .prose :global(ul), .prose :global(ol) { margin: 16px 0 24px; padding-left: 24px; }
   .prose :global(li) { margin-bottom: 8px; padding-left: 4px; }
-  .prose :global(code) { padding: 2px 4px; border: 1px solid var(--line); background: var(--paper-deep); font-family: var(--mono); font-size: .82em; }
+  .prose :global(code) { padding: 2px 4px; border: 1px solid var(--line); background: var(--paper-deep); font-family: var(--mono); font-size: 14px; }
   /* background-color must be reset: the UA default is `Mark` (yellow), which otherwise
      sits under the gradient and turns unreadable against light text in dark mode. */
   .prose :global(mark) { padding: 0 2px; background-color: transparent; background-image: linear-gradient(transparent 62%, light-dark(rgba(24, 24, 24, 0.16), rgba(196, 196, 191, 0.22)) 62%); color: inherit; }
   .prose :global(hr) { margin: 48px 0; border: 0; border-top: 1px solid var(--line-strong); }
-  .prose :global(.note) { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
-  .prose :global(pre) { margin: 32px 0; padding: 16px 24px; overflow-x: auto; border: 1px solid var(--line); background: var(--paper-deep); font-size: 13.5px; line-height: 1.55; }
+  /* One supporting style for notes and disclosure controls. */
+  .prose :global(.supporting-text), .prose :global(.note) {
+    color: var(--muted);
+    font: var(--supporting-font);
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  .prose :global(caption) { padding-bottom: 16px; color: var(--muted); font: var(--supporting-font); font-family: var(--sans); text-align: left; white-space: normal; }
+  .prose :global(.article-details) { border-top: 1px solid var(--line); }
+  .prose :global(.article-details > summary) {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 0;
+    color: var(--muted);
+    font: var(--supporting-font);
+    letter-spacing: normal;
+    text-transform: none;
+    cursor: pointer;
+    list-style: none;
+  }
+  .prose :global(.article-details > summary::-webkit-details-marker) { display: none; }
+  .prose :global(.article-details > summary::before) { flex: 0 0 12px; color: var(--ink); content: '+'; }
+  .prose :global(.article-details[open] > summary::before) { content: '−'; }
+  .prose :global(.article-details > summary:hover) { color: var(--ink); }
+  .prose :global(pre) { margin: 32px 0; padding: 16px 24px; overflow-x: auto; border: 1px solid var(--line); background: var(--paper-deep); font-size: 14px; line-height: 22px; }
   .prose :global(pre code) { padding: 0; border: 0; background: none; font-size: inherit; }
-  .prose :global(table) { width: 100%; margin: 32px 0 48px; border-collapse: collapse; font-family: var(--mono); font-size: 13px; line-height: 1.45; }
+  .prose :global(table) {
+    --supporting-font: 400 14px/20px var(--mono);
+    width: 100%;
+    margin: 32px 0 48px;
+    border-collapse: collapse;
+    font: var(--supporting-font);
+    font-variant-numeric: tabular-nums;
+  }
   .prose :global(.table-overflow) { max-width: 100%; margin: 32px 0 48px; overflow-x: auto; }
   .prose :global(.table-overflow > table) { margin: 0; }
-  .prose :global(th) { color: var(--muted); font-size: 11px; font-weight: 500; text-align: left; text-transform: uppercase; }
+  .prose :global(th) { font: inherit; text-align: left; }
+  .prose :global(thead th) { color: var(--muted); }
+  /* Explicit data roles also apply to chart labels. */
+  .prose :global(.model-name), .prose :global(.numeric) { font-family: var(--mono); font-variant-numeric: tabular-nums; }
   .prose :global(th), .prose :global(td) { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   .prose :global(th:first-child), .prose :global(td:first-child) { padding-left: 0; }
   /* Shiki emits both palettes; light-dark() follows color-scheme, so the toggle drives it. */
@@ -96,14 +142,26 @@ const toc = headings.filter(({ depth }) => depth === 2);
   .prose :global(.astro-code span) {
     color: light-dark(var(--shiki-light), var(--shiki-dark));
   }
+  @media (min-width: 1280px) {
+    .article-header .display-title { font-size: 60px; line-height: 64px; }
+  }
+  @media (min-width: 1600px) {
+    .article-header .display-title { font-size: 72px; line-height: 76px; }
+    .prose :global(h2) { font-size: 36px; line-height: 40px; }
+  }
   @media (max-width: 1100px) { .article-shell { display: block; } .toc { display: none; } }
   @media (max-width: 760px) {
     .article-shell { padding: 32px 16px 64px; }
     .article-header { margin-bottom: 32px; padding-bottom: 32px; }
-    .prose { font-size: 16px; }
-    .prose :global(h2) { margin-top: 64px; }
+    .article-header .display-title { font-size: 40px; line-height: 44px; }
+    .article-header .lede { font-size: 20px; line-height: 28px; }
+    .prose { --body-font: 400 16px/26px var(--sans); }
+    .prose :global(h2) { margin-top: 64px; font-size: 28px; line-height: 32px; }
     .prose :global(table) { display: block; overflow-x: auto; white-space: nowrap; }
     .prose :global(.table-overflow > table), .prose :global(.fig-table > table) { display: table; overflow: visible; }
+  }
+  @media (max-width: 380px) {
+    .article-header .display-title { font-size: 36px; line-height: 40px; }
   }
   .prose :global(table.compact-comparison) { display: table; table-layout: fixed; white-space: normal; }
   .prose :global(.compact-comparison th:first-child) { width: 50%; }
