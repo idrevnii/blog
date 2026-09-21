@@ -107,6 +107,14 @@ const themeLabels = isRu
         if (stored === 'light' || stored === 'dark') document.documentElement.dataset.theme = stored;
       } catch {}
     </script>
+    {import.meta.env.PROD && (
+      <script
+        is:inline
+        data-goatcounter="https://anc13nt.goatcounter.com/count"
+        async
+        src="https://gc.zgo.at/count.js"
+      ></script>
+    )}
   </head>
   <body>
     <a class="skip-link" href="#main-content">{isRu ? 'Перейти к содержимому' : 'Skip to content'}</a>
